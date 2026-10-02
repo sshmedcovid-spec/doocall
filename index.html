@@ -80,6 +80,10 @@ a{color:var(--blue-d)}
 /* layout */
 .main{padding-top:24px;padding-bottom:48px;display:flex;flex-direction:column;gap:24px}
 .kpis{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:16px}
+.kpis.kpis5{grid-template-columns:repeat(5,minmax(0,1fr))}
+.kpis5 .kpi{padding:16px;gap:12px}
+.kpis5 .kpi-ic{width:42px;height:42px;border-radius:12px}
+.kpis5 .kpi .v{font-size:28px}
 .kpi{border-radius:20px;padding:18px 20px;display:flex;gap:14px;align-items:center}
 .kpi-ic{width:48px;height:48px;border-radius:14px;display:flex;align-items:center;justify-content:center;color:#fff;flex:none}
 .kpi .l{font-size:14px;font-weight:500;color:var(--ink2)}
@@ -238,7 +242,7 @@ textarea.input{height:auto;padding:10px 14px;resize:vertical}
 .segbox button.on{background:var(--grad);color:#fff}
 .range-form{display:flex;align-items:center;gap:6px}
 .st-grid{display:grid;grid-template-columns:minmax(0,1.6fr) minmax(0,1fr);gap:24px;align-items:start}
-.trow{display:grid;grid-template-columns:minmax(0,1.6fr) minmax(0,2fr) 60px 100px 90px 70px;gap:12px;align-items:center;font-size:14px;padding:3px 0}
+.trow{display:grid;grid-template-columns:minmax(0,1.5fr) minmax(0,1.4fr) 44px 86px 86px 76px 56px;gap:12px;align-items:center;font-size:14px;padding:3px 0}
 .trow.head{font-size:13px;color:var(--muted);font-weight:600;padding-bottom:8px;border-bottom:1px solid var(--gray-l)}
 .trow .r{text-align:right}
 .trow .nm{font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
@@ -292,9 +296,10 @@ th{color:var(--muted);font-weight:600;font-size:13px}
 @keyframes ring{0%,100%{transform:rotate(0)}20%{transform:rotate(-14deg)}40%{transform:rotate(12deg)}60%{transform:rotate(-8deg)}80%{transform:rotate(5deg)}}
 @keyframes blink{0%,100%{box-shadow:0 0 0 0 rgba(229,72,77,.5)}50%{box-shadow:0 0 0 5px rgba(229,72,77,0)}}
 
-@media (max-width:1000px){.layout,.st-grid{grid-template-columns:1fr}.kpis{grid-template-columns:repeat(2,minmax(0,1fr))}.form-card{position:static}}
+@media (max-width:1200px){.kpis.kpis5{grid-template-columns:repeat(3,minmax(0,1fr))}}
+@media (max-width:1000px){.layout,.st-grid{grid-template-columns:1fr}.kpis,.kpis.kpis5{grid-template-columns:repeat(2,minmax(0,1fr))}.form-card{position:static}}
 @media (max-width:860px){.login{grid-template-columns:1fr}.login-brand{display:none}.login-mini{display:flex}}
-@media (max-width:720px){.dstats,.dcards{grid-template-columns:1fr}.wrap{padding-left:16px;padding-right:16px}.kpis{grid-template-columns:1fr}}
+@media (max-width:720px){.dstats,.dcards{grid-template-columns:1fr}.wrap{padding-left:16px;padding-right:16px}.kpis,.kpis.kpis5{grid-template-columns:1fr}}
 @media (max-width:640px){.trow{grid-template-columns:minmax(0,1fr) 60px}.hide-sm{display:none}}
 @media (prefers-reduced-motion:reduce){.kpi.alert,.case.esc,.dcase.s-pending,.ring,.alarm,.tl li.now .d{animation:none}}
 </style>
@@ -320,7 +325,7 @@ const firebaseConfig = {
 };
 
 const USER_DOMAIN = 'callback.local'; // ชื่อผู้ใช้ "op01" จะถูกแปลงเป็น op01@callback.local
-const ESCALATE_MIN = 5;               // ไม่มีผู้รับทราบเกินกี่นาที ให้ขึ้นแดงเข้มที่หน้า Operator
+const ESCALATE_MIN = 10;              // ไม่มีผู้รับทราบเกินกี่นาที ให้ขึ้นแดงเข้มที่หน้า Operator
 const RING_EVERY_MS = 2000;           // ความถี่เสียงเตือนที่หน้าแผนก
 const MASK_AFTER_DAYS = 90;           // ปิดบังข้อมูลคนไข้ของเคสที่เก่ากว่ากี่วัน
 
@@ -592,7 +597,7 @@ function toMap(snap) {
   const m = new Map();
   snap.docs.forEach((d) => {
     const x = d.data({ serverTimestamps: 'estimate' });
-    m.set(d.id, { id: d.id, ...x, createdMs: tms(x.createdAt), ackMs: tms(x.ackAt), closedMs: tms(x.closedAt) });
+    m.set(d.id, { id: d.id, ...x, createdMs: tms(x.createdAt), ackMs: tms(x.ackAt), closedMs: tms(x.closedAt), callMs: tms(x.firstCallAt) });
   });
   return m;
 }
@@ -939,11 +944,14 @@ function timeline(c, now) {
   if (c.ackMs) s2 = `<li class="on"><span class="d"></span><b>รับทราบ</b><span class="t">${hm(c.ackMs)}</span><em>ใช้ ${dur((c.ackSeconds || 0) * 1000)} น.</em></li>`;
   else if (c.status === 'pending') s2 = `<li class="now"><span class="d"></span><b>รับทราบ</b><span class="t red">รอ <span data-since="${c.created}" data-fmt="dur">${dur(now - c.created)}</span></span></li>`;
   else s2 = `<li><span class="d"></span><b>รับทราบ</b><span class="t muted">–</span></li>`;
+  let sCall;
+  if (c.callMs) sCall = `<li class="on"><span class="d"></span><b>โทร</b><span class="t">${hm(c.callMs)}</span><em>ใช้ ${dur((c.callSeconds || 0) * 1000)} น.</em></li>`;
+  else if (c.status === 'ack' && c.ackMs) sCall = `<li class="now-a"><span class="d"></span><b>โทร</b><span class="t">รอ <span data-since="${c.ackMs}" data-fmt="dur">${dur(now - c.ackMs)}</span></span></li>`;
+  else sCall = `<li><span class="d"></span><b>โทร</b><span class="t muted">–</span></li>`;
   let s3;
   if (c.closedMs) s3 = `<li class="on"><span class="d"></span><b>${cancelled ? 'ยกเลิก' : 'ปิดเคส'}</b><span class="t">${hm(c.closedMs)}</span></li>`;
-  else if (c.status === 'ack') s3 = `<li class="now-a"><span class="d"></span><b>ปิดเคส</b><span class="t muted">รอโทรกลับ</span></li>`;
   else s3 = `<li><span class="d"></span><b>ปิดเคส</b><span class="t muted">–</span></li>`;
-  return `<ol class="tl" aria-label="ความคืบหน้าของเคส">${s1}${s2}${s3}</ol>`;
+  return `<ol class="tl" aria-label="ความคืบหน้าของเคส">${s1}${s2}${cancelled && !c.ackMs ? '' : sCall}${s3}</ol>`;
 }
 
 function patientBox(c) {
@@ -1083,11 +1091,44 @@ async function closeCase(id, status) {
     const c = snap.data();
     const allowedFrom = status === 'cancelled' ? OPEN : ['ack'];
     if (!allowedFrom.includes(c.status)) return false;
-    tx.update(ref, {
+    const upd = {
       status, closedAt: serverTimestamp(), closedByUid: S.user.uid,
       closedByName: S.profile.role === 'dept' ? 'แผนก' : (S.profile.displayName || S.profile.username || '')
-    });
-    tx.set(doc(db, 'stats', c.day), { depts: { [c.deptId]: { [status]: increment(1) } } }, { merge: true });
+    };
+    const st = { [status]: increment(1) };
+    const ackMs = tms(c.ackAt);
+    if (status !== 'cancelled' && ackMs) {
+      // เวลาตั้งแต่รับทราบจนปิดเคส
+      const resolveSec = Math.max(0, Math.round((Date.now() - ackMs) / 1000));
+      upd.resolveSeconds = resolveSec;
+      st.resolveCount = increment(1); st.resolveSum = increment(resolveSec);
+      // ถ้ายังไม่เคยบันทึกเวลาโทร ใช้เวลาที่กดปุ่มนี้เป็นเวลาโทรครั้งแรก
+      if (!c.firstCallAt) {
+        upd.firstCallAt = serverTimestamp(); upd.callSeconds = resolveSec;
+        st.callCount = increment(1); st.callSum = increment(resolveSec);
+      }
+    }
+    tx.update(ref, upd);
+    tx.set(doc(db, 'stats', c.day), { depts: { [c.deptId]: st } }, { merge: true });
+    return true;
+  });
+}
+
+async function recordAttempt(id) {
+  const ref = doc(db, 'cases', id);
+  return runTransaction(db, async (tx) => {
+    const snap = await tx.get(ref);
+    if (!snap.exists()) return false;
+    const c = snap.data();
+    if (c.status !== 'ack') return false;
+    const upd = { attempts: increment(1), lastAttemptAt: serverTimestamp() };
+    const ackMs = tms(c.ackAt);
+    if (!c.firstCallAt && ackMs) {
+      const callSec = Math.max(0, Math.round((Date.now() - ackMs) / 1000));
+      upd.firstCallAt = serverTimestamp(); upd.callSeconds = callSec;
+      tx.set(doc(db, 'stats', c.day), { depts: { [c.deptId]: { callCount: increment(1), callSum: increment(callSec) } } }, { merge: true });
+    }
+    tx.update(ref, upd);
     return true;
   });
 }
@@ -1201,13 +1242,13 @@ async function loadStats() {
 
 function renderStats(docs) {
   const body = $('#stats-body'); if (!body) return;
-  const KEYS = ['cases', 'ackCount', 'ackSum', 'late', 'done', 'fail', 'wrong', 'cancelled'];
+  const KEYS = ['cases', 'ackCount', 'ackSum', 'late', 'done', 'fail', 'wrong', 'cancelled', 'callCount', 'callSum', 'resolveCount', 'resolveSum'];
   const depts = {};
   const hours = Array(24).fill(0);
   docs.forEach((s) => {
     Object.entries(s.hours || {}).forEach(([h, n]) => { const i = +h; if (i >= 0 && i < 24) hours[i] += n || 0; });
     Object.entries(s.depts || {}).forEach(([id, v]) => {
-      const t = depts[id] || (depts[id] = { id, name: '', cases: 0, ackCount: 0, ackSum: 0, late: 0, done: 0, fail: 0, wrong: 0, cancelled: 0 });
+      const t = depts[id] || (depts[id] = { id, name: '', cases: 0, ackCount: 0, ackSum: 0, late: 0, done: 0, fail: 0, wrong: 0, cancelled: 0, callCount: 0, callSum: 0, resolveCount: 0, resolveSum: 0 });
       KEYS.forEach((k) => { t[k] += v[k] || 0; });
       t.name = (S.deptMap[id] && S.deptMap[id].name) || v.name || t.name || id;
     });
@@ -1218,6 +1259,7 @@ function renderStats(docs) {
   const total = sum('real');
   if (!total) { body.innerHTML = `<div class="empty">ยังไม่มีข้อมูลในช่วงเวลานี้</div>`; return; }
   const ackCount = sum('ackCount'), ackSum = sum('ackSum'), late = sum('late');
+  const callCount = sum('callCount'), callSum = sum('callSum');
   const done = sum('done'), fail = sum('fail'), wrong = sum('wrong');
   const closedN = done + fail + wrong;
   const openN = Math.max(0, total - closedN);
@@ -1226,23 +1268,26 @@ function renderStats(docs) {
   const hMax = Math.max(1, ...hours);
 
   body.innerHTML = `
-  <div class="kpis">
+  <div class="kpis kpis5">
     ${kpi('เคสที่แผนกไม่รับสาย', total, 'ไม่รวมเคสที่ Operator ยกเลิก', 'blue', ICON.inbox)}
     ${kpi('เวลารับทราบเฉลี่ย', dur(ackCount ? (ackSum / ackCount) * 1000 : 0), 'นาที ตั้งแต่ Operator ฝากเคส', 'amber', ICON.clock)}
+    ${kpi('รับทราบ → โทร เฉลี่ย', dur(callCount ? (callSum / callCount) * 1000 : 0), `นาที · จาก ${callCount} เคส`, 'blue', ICON.phone)}
     ${kpi(`รับทราบช้ากว่า ${ESCALATE_MIN} นาที`, late, `${pct(late, ackCount)}% ของเคสที่รับทราบแล้ว`, 'red', ICON.alert)}
     ${kpi('โทรกลับสำเร็จ', pct(done, closedN) + '%', `${done} จาก ${closedN} เคสที่ปิดแล้ว`, 'green', ICON.check)}
   </div>
   <div class="st-grid">
     <section class="glass card stack-sm">
       <div><h2 class="h2" style="font-size:18px">แผนกที่ไม่รับสาย มากไปน้อย</h2><p class="sub">จำนวนเคสที่ Operator ต้องฝากให้โทรกลับ</p></div>
-      <div class="trow head"><div>แผนก</div><div class="hide-sm"></div><div class="r">เคส</div><div class="r hide-sm">รับทราบเฉลี่ย</div><div class="r hide-sm">ช้ากว่า ${ESCALATE_MIN} น.</div><div class="r hide-sm">สำเร็จ</div></div>
+      <div class="trow head"><div>แผนก</div><div class="hide-sm"></div><div class="r">เคส</div><div class="r hide-sm">รับทราบเฉลี่ย</div><div class="r hide-sm">รับทราบ→โทร</div><div class="r hide-sm">ช้ากว่า ${ESCALATE_MIN} น.</div><div class="r hide-sm">สำเร็จ</div></div>
       ${rows.map((r, i) => {
         const avg = r.ackCount ? r.ackSum / r.ackCount : 0;
+        const avgCall = r.callCount ? r.callSum / r.callCount : null;
         const closed = r.done + r.fail + r.wrong;
         return `<div class="trow"><div class="nm" title="${esc(r.name)}">${esc(r.name)}</div>
           <div class="bar hide-sm"><div style="width:${Math.round((r.real / max) * 100)}%;background:${i < 3 ? 'var(--blue)' : '#9DBDF0'}"></div></div>
           <div class="r mono" style="font-weight:600">${r.real}</div>
-          <div class="r mono hide-sm" style="color:${avg > 240 ? 'var(--red)' : 'inherit'}">${dur(avg * 1000)}</div>
+          <div class="r mono hide-sm" style="color:${avg > ESCALATE_MIN * 60 ? 'var(--red)' : 'inherit'}">${dur(avg * 1000)}</div>
+          <div class="r mono hide-sm" style="color:${avgCall > 600 ? 'var(--red)' : 'inherit'}">${avgCall === null ? '-' : dur(avgCall * 1000)}</div>
           <div class="r mono hide-sm" style="color:${r.late ? 'var(--red)' : 'var(--muted)'}">${r.late}</div>
           <div class="r mono hide-sm">${closed ? pct(r.done, closed) + '%' : '-'}</div></div>`;
       }).join('')}
@@ -1274,13 +1319,15 @@ async function exportCSV(btn) {
     const rows = snap.docs.map((d) => ({ id: d.id, ...d.data() }))
       .sort((a, b) => (tms(a.createdAt) || 0) - (tms(b.createdAt) || 0));
     const fmt = (t) => { const ms = tms(t); return ms ? hms(ms) : ''; };
+    const mins = (sec) => (typeof sec === 'number' ? (sec / 60).toFixed(1) : '');
     const header = ['วันที่', 'เวลาฝาก', 'แผนก', 'ชื่อคนไข้', 'เบอร์โทร', 'HN', 'เรื่อง', 'รายละเอียด', 'ด่วน', 'สถานะ', 'Operator',
-      'เวลารับทราบ', 'ID ผู้รับทราบ', 'นาทีถึงรับทราบ', 'โทรไม่ติด (ครั้ง)', 'เวลาปิดเคส'];
+      'เวลารับทราบ', 'ID ผู้รับทราบ', 'นาทีถึงรับทราบ', 'เวลาโทรครั้งแรก', 'นาทีรับทราบ→โทร', 'โทรไม่ติด (ครั้ง)', 'เวลาปิดเคส', 'นาทีรับทราบ→ปิดเคส'];
     const lines = [header].concat(rows.map((c) => [
       c.day, fmt(c.createdAt), (S.deptMap[c.deptId] && S.deptMap[c.deptId].name) || c.deptName, c.patientName, c.phone, c.hn,
       c.topic, c.note, c.urgent ? 'ด่วน' : '', STATUS[c.status] || c.status, c.createdByName,
-      fmt(c.ackAt), c.ackEmpId || '', typeof c.ackSeconds === 'number' ? (c.ackSeconds / 60).toFixed(1) : '',
-      c.attempts || 0, fmt(c.closedAt)
+      fmt(c.ackAt), c.ackEmpId || '', mins(c.ackSeconds),
+      fmt(c.firstCallAt), mins(c.callSeconds),
+      c.attempts || 0, fmt(c.closedAt), mins(c.resolveSeconds)
     ]));
     const cell = (v) => {
       let s = String(v ?? '');
@@ -1492,7 +1539,7 @@ document.addEventListener('click', async (e) => {
       break;
     case 'ack': openAck(id); break;
     case 'ack-all': openAck('all'); break;
-    case 'retry': await guard(updateDoc(doc(db, 'cases', id), { attempts: increment(1), lastAttemptAt: serverTimestamp() }), 'บันทึกว่าโทรไม่ติดแล้ว'); break;
+    case 'retry': await guard(recordAttempt(id), 'บันทึกว่าโทรไม่ติดแล้ว'); break;
     case 'done': el.disabled = true; await guard(closeCase(id, 'done'), 'ปิดเคส: โทรกลับสำเร็จ'); break;
     case 'fail': if (confirm('ปิดเคสนี้เป็น "ติดต่อคนไข้ไม่ได้"?')) await guard(closeCase(id, 'fail'), 'ปิดเคสแล้ว'); break;
     case 'wrong': if (confirm('ปิดเคสนี้เป็น "เบอร์ไม่ถูกต้อง"?')) await guard(closeCase(id, 'wrong'), 'ปิดเคสแล้ว'); break;
