@@ -186,6 +186,9 @@ textarea.input{height:auto;padding:10px 14px;resize:vertical}
 .tl .t{font-size:14px;font-weight:600;color:var(--ink)}
 .tl .t.red{color:var(--red-t)}
 .tl em{font-style:normal;font-size:12px;color:var(--muted)}
+.case.clickable{cursor:pointer;transition:box-shadow .15s}
+.case.clickable:hover{box-shadow:0 16px 36px rgba(36,58,140,.16),inset 0 1px 0 rgba(255,255,255,.9)}
+.xbtn.tl-btn:hover{background:var(--blue-l);color:var(--blue-d)}
 .case-f{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:8px 16px;border-top:1px solid rgba(214,222,245,.7);font-size:12px;color:var(--muted);min-height:44px}
 .xbtn{background:none;border:none;color:var(--muted);font-size:13px;cursor:pointer;min-height:36px;padding:0 6px;border-radius:8px;display:inline-flex;align-items:center;gap:4px}
 .xbtn:hover{background:rgba(229,72,77,.08);color:var(--red-t)}
@@ -325,14 +328,13 @@ const firebaseConfig = {
 };
 
 const USER_DOMAIN = 'callback.local'; // ชื่อผู้ใช้ "op01" จะถูกแปลงเป็น op01@callback.local
-const ESCALATE_MIN = 10;              // ไม่มีผู้รับทราบเกินกี่นาที ให้ขึ้นแดงเข้มที่หน้า Operator
+const ESCALATE_MIN = 10;              // ไม่มีผู้รับเรื่องเกินกี่นาที ให้ขึ้นแดงเข้มที่หน้า Operator
 const RING_EVERY_MS = 2000;           // ความถี่เสียงเตือนที่หน้าแผนก
 const MASK_AFTER_DAYS = 90;           // ปิดบังข้อมูลคนไข้ของเคสที่เก่ากว่ากี่วัน
 
 const TOPICS = ['นัดหมาย / เลื่อนนัด', 'สอบถามผลตรวจ', 'สอบถามอาการ / ยา', 'ค่าใช้จ่าย / ประกัน', 'เอกสาร / ใบรับรองแพทย์', 'อื่นๆ'];
 const DEFAULT_DEPTS = [
-  ['จิตเวช', '4183 / 4184', 'อาคาร C ชั้น 1'],
-  ['ศูนย์สมอง', '4183 / 4184', 'อาคาร C ชั้น 1'],
+  ['ศูนย์สมองและจิตเวช', '4183 / 4184', 'อาคาร C ชั้น 1'],
   ['อายุรกรรม', '4101 / 4102', 'อาคาร C ชั้น 1'],
   ['Subboard', '1423 / 1424', 'อาคาร A ชั้น 4'],
   ['ทางเดินอาหารและตับ', '5102 / 5103', 'อาคาร C ชั้น 11'],
@@ -369,14 +371,14 @@ import {
 const OPEN = ['pending', 'ack'];
 const CLOSED = ['done', 'fail', 'wrong', 'cancelled'];
 const STATUS = {
-  pending: 'รอรับทราบ', ack: 'รับทราบแล้ว · รอโทรกลับ', done: 'โทรกลับสำเร็จ',
+  pending: 'รอรับเรื่อง', ack: 'รับเรื่องแล้ว · รอโทรกลับ', done: 'โทรกลับสำเร็จ',
   fail: 'ติดต่อคนไข้ไม่ได้', wrong: 'เบอร์ไม่ถูกต้อง', cancelled: 'ยกเลิกโดย Operator'
 };
-const SHORT = { pending: 'รอรับทราบ', ack: 'รอโทรกลับ', done: 'สำเร็จ', fail: 'ติดต่อไม่ได้', wrong: 'เบอร์ผิด', cancelled: 'ยกเลิก' };
+const SHORT = { pending: 'รอรับเรื่อง', ack: 'รอโทรกลับ', done: 'สำเร็จ', fail: 'ติดต่อไม่ได้', wrong: 'เบอร์ผิด', cancelled: 'ยกเลิก' };
 const ROLE = { operator: 'Operator', dept: 'แผนก', admin: 'ผู้ดูแลระบบ' };
 const TABS = [
   ['open', 'งานค้าง', (c) => OPEN.includes(c.status)],
-  ['pending', 'รอรับทราบ', (c) => c.status === 'pending'],
+  ['pending', 'รอรับเรื่อง', (c) => c.status === 'pending'],
   ['ack', 'รอโทรกลับ', (c) => c.status === 'ack'],
   ['closed', 'ปิดแล้ว (วันนี้)', (c) => CLOSED.includes(c.status)],
   ['all', 'ทั้งหมด', () => true]
@@ -407,6 +409,14 @@ const dayOffset = (n) => { const d = new Date(); d.setDate(d.getDate() + n); ret
 const hm = (ms) => { const d = new Date(ms); return `${pad(d.getHours())}:${pad(d.getMinutes())}`; };
 const hms = (ms) => { const d = new Date(ms); return `${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`; };
 const dur = (ms) => { const s = Math.max(0, Math.floor(ms / 1000)); return `${Math.floor(s / 60)}:${pad(s % 60)}`; };
+// เวลารอแบบอ่านง่าย: 4:12 นาที / 1 ชม. 26 นาที / 3 วัน 15 ชม.
+const longDur = (ms, unit = 'นาที') => {
+  const m = Math.floor(Math.max(0, ms) / 60000);
+  if (m < 60) return `${dur(ms)} ${unit}`;
+  if (m < 1440) return `${Math.floor(m / 60)} ชม. ${m % 60} ${unit}`;
+  return `${Math.floor(m / 1440)} วัน ${Math.floor((m % 1440) / 60)} ชม.`;
+};
+const shortDur = (ms) => longDur(ms, 'น.');
 const ago = (ms) => {
   const m = Math.floor(ms / 60000);
   if (m < 1) return 'เมื่อสักครู่';
@@ -444,7 +454,7 @@ const S = {
   depts: [], deptMap: {}, cases: [], caseA: new Map(), caseB: new Map(),
   unsubs: [], caseUnsubs: [], day: dayKey(), escKey: '',
   tab: 'open', deptFilter: '', form: { topic: '', urgent: false },
-  showClosed: false, statsRange: 'today', statsFrom: dayKey(), statsTo: dayKey(),
+  showClosed: false, expanded: new Set(), staffRows: [], statsRange: 'today', statsFrom: dayKey(), statsTo: dayKey(),
   audio: null, lastRing: 0, soundState: '', netState: '', dialog: null, editDeptId: null
 };
 
@@ -651,7 +661,8 @@ function tick() {
   const ck = $('#clock'); if (ck) ck.textContent = hms(now);
   document.querySelectorAll('[data-since]').forEach((el) => {
     const t = +el.dataset.since;
-    el.textContent = el.dataset.fmt === 'ago' ? ago(now - t) : dur(now - t);
+    const f = el.dataset.fmt;
+    el.textContent = f === 'ago' ? ago(now - t) : f === 'wait' ? longDur(now - t) : f === 'short' ? shortDur(now - t) : dur(now - t);
   });
   if (dayKey() !== S.day) subscribeCases();
   if (escKeyNow(now) !== S.escKey) render();
@@ -797,7 +808,7 @@ function renderShell() {
 /* ---------- operator: form ---------- */
 function formHtml() {
   return `
-  <div><h2 id="form-title" class="h2">ฝากให้แผนกโทรกลับ</h2>
+  <div><h2 id="form-title" class="h2">ข้อมูลติดต่อกลับ</h2>
     <p class="sub2" style="font-size:14px">กรอกเมื่อโอนสายแล้วแผนกไม่รับ หน้าจอแผนกจะมีเสียงเตือนทันที</p></div>
   <form id="case-form" class="stack" novalidate>
     <div class="field"><label for="f-dept">แผนกที่ต้องโทรกลับ *</label><select id="f-dept" name="dept" class="input"></select><div id="f-dept-info" class="hint"></div></div>
@@ -907,12 +918,12 @@ function renderBoard() {
   const ackedToday = all.filter((c) => typeof c.ackSeconds === 'number' && c.day === today);
   const avg = ackedToday.length ? ackedToday.reduce((t, c) => t + c.ackSeconds, 0) / ackedToday.length : 0;
   $('#kpis').innerHTML = [
-    kpi('รอแผนกรับทราบ', pendingN, 'หน้าจอแผนกกำลังส่งเสียงเตือน', pendingN ? 'red' : 'gray', ICON.bell),
+    kpi('รอแผนกรับเรื่อง', pendingN, 'หน้าจอแผนกกำลังส่งเสียงเตือน', pendingN ? 'red' : 'gray', ICON.bell),
     escN
-      ? `<div class="kpi alert"><div class="kpi-ic">${ICON.alert}</div><div><div class="l">เกิน ${ESCALATE_MIN} นาที ไม่มีผู้รับทราบ</div><div class="v">${escN}</div><div class="s">ต้องโทรตามแผนกโดยตรง</div></div></div>`
-      : kpi(`เกิน ${ESCALATE_MIN} นาที ไม่มีผู้รับทราบ`, 0, 'ไม่มีเคสค้างนาน', 'gray', ICON.alert),
-    kpi('รับทราบแล้ว รอโทรกลับ', ackN, 'แผนกกำลังดำเนินการ', 'amber', ICON.clock),
-    kpi('ปิดเคสวันนี้', closedToday.length, `รับทราบเฉลี่ย ${dur(avg * 1000)} นาที`, 'green', ICON.check)
+      ? `<div class="kpi alert"><div class="kpi-ic">${ICON.alert}</div><div><div class="l">เกิน ${ESCALATE_MIN} นาที ไม่มีผู้รับเรื่อง</div><div class="v">${escN}</div><div class="s">ต้องโทรตามแผนกโดยตรง</div></div></div>`
+      : kpi(`เกิน ${ESCALATE_MIN} นาที ไม่มีผู้รับเรื่อง`, 0, 'ไม่มีเคสค้างนาน', 'gray', ICON.alert),
+    kpi('รับเรื่องแล้ว รอโทรกลับ', ackN, 'แผนกกำลังดำเนินการ', 'amber', ICON.clock),
+    kpi('ปิดเคสวันนี้', closedToday.length, `รับเรื่องเฉลี่ย ${dur(avg * 1000)} นาที`, 'green', ICON.check)
   ].join('');
 
   $('#tabs').innerHTML = TABS.map(([id, label, test]) => {
@@ -923,7 +934,7 @@ function renderBoard() {
 
   let html = '';
   if (escList.length) {
-    html += `<div class="stack-sm"><div class="esc-head">${ICON.alert} ไม่มีผู้รับทราบเกิน ${ESCALATE_MIN} นาที — โทรตามแผนกโดยตรง</div>
+    html += `<div class="stack-sm"><div class="esc-head">${ICON.alert} ไม่มีผู้รับเรื่องเกิน ${ESCALATE_MIN} นาที — โทรตามแผนกโดยตรง</div>
       <div class="cards">${escList.map(escCard).join('')}</div></div>`;
   }
   if (list.length) html += `<div class="cards">${list.map(opCard).join('')}</div>`;
@@ -936,17 +947,17 @@ function kpi(label, value, sub, tone = 'blue', icon = ICON.inbox) {
     <div style="min-width:0"><div class="l">${label}</div><div class="v">${value}</div><div class="s">${sub}</div></div></div>`;
 }
 
-// เส้นเวลาย่อ: ฝาก → รับทราบ → ปิดเคส
+// เส้นเวลาย่อ: ฝาก → รับเรื่อง → ปิดเคส
 function timeline(c, now) {
   const cancelled = c.status === 'cancelled';
   const s1 = `<li class="on"><span class="d"></span><b>ฝาก</b><span class="t">${hm(c.created)}</span></li>`;
   let s2;
-  if (c.ackMs) s2 = `<li class="on"><span class="d"></span><b>รับทราบ</b><span class="t">${hm(c.ackMs)}</span><em>ใช้ ${dur((c.ackSeconds || 0) * 1000)} น.</em></li>`;
-  else if (c.status === 'pending') s2 = `<li class="now"><span class="d"></span><b>รับทราบ</b><span class="t red">รอ <span data-since="${c.created}" data-fmt="dur">${dur(now - c.created)}</span></span></li>`;
-  else s2 = `<li><span class="d"></span><b>รับทราบ</b><span class="t muted">–</span></li>`;
+  if (c.ackMs) s2 = `<li class="on"><span class="d"></span><b>รับเรื่อง</b><span class="t">${hm(c.ackMs)}</span><em>ใช้ ${shortDur((c.ackSeconds || 0) * 1000)}</em></li>`;
+  else if (c.status === 'pending') s2 = `<li class="now"><span class="d"></span><b>รับเรื่อง</b><span class="t red">รอ <span data-since="${c.created}" data-fmt="short">${shortDur(now - c.created)}</span></span></li>`;
+  else s2 = `<li><span class="d"></span><b>รับเรื่อง</b><span class="t muted">–</span></li>`;
   let sCall;
-  if (c.callMs) sCall = `<li class="on"><span class="d"></span><b>โทร</b><span class="t">${hm(c.callMs)}</span><em>ใช้ ${dur((c.callSeconds || 0) * 1000)} น.</em></li>`;
-  else if (c.status === 'ack' && c.ackMs) sCall = `<li class="now-a"><span class="d"></span><b>โทร</b><span class="t">รอ <span data-since="${c.ackMs}" data-fmt="dur">${dur(now - c.ackMs)}</span></span></li>`;
+  if (c.callMs) sCall = `<li class="on"><span class="d"></span><b>โทร</b><span class="t">${hm(c.callMs)}</span><em>ใช้ ${shortDur((c.callSeconds || 0) * 1000)}</em></li>`;
+  else if (c.status === 'ack' && c.ackMs) sCall = `<li class="now-a"><span class="d"></span><b>โทร</b><span class="t">รอ <span data-since="${c.ackMs}" data-fmt="short">${shortDur(now - c.ackMs)}</span></span></li>`;
   else sCall = `<li><span class="d"></span><b>โทร</b><span class="t muted">–</span></li>`;
   let s3;
   if (c.closedMs) s3 = `<li class="on"><span class="d"></span><b>${cancelled ? 'ยกเลิก' : 'ปิดเคส'}</b><span class="t">${hm(c.closedMs)}</span></li>`;
@@ -966,7 +977,7 @@ function patientBox(c) {
 function escCard(c) {
   return `<article class="case esc">
     <div class="case-h"><div><div class="dname" style="font-size:18px">${esc(c.d.name)}</div><div class="ext">${esc(c.d.building)}</div></div>
-      <span class="esc-wait">รอ <span data-since="${c.created}" data-fmt="dur">${dur(Date.now() - c.created)}</span> นาที</span></div>
+      <span class="esc-wait">รอ <span data-since="${c.created}" data-fmt="wait">${longDur(Date.now() - c.created)}</span></span></div>
     <div class="case-b">
       <div class="esc-call"><div><div class="lbl2">โทรตามแผนก</div><div class="ext-big">ต่อ ${esc(c.d.ext)}</div></div>${ICON.phone}</div>
       ${patientBox(c)}
@@ -979,15 +990,19 @@ function escCard(c) {
 function opCard(c) {
   const open = OPEN.includes(c.status);
   const who = [shortName(c.createdByName), c.ackEmpId ? `ID ${c.ackEmpId}` : ''].filter(Boolean).join(' → ');
-  return `<article class="case glass s-${esc(c.status)}">
+  const show = S.expanded.has(c.id);
+  return `<article class="case glass s-${esc(c.status)} clickable" data-act="toggle-tl" data-id="${esc(c.id)}">
     <div class="case-h"><div style="min-width:0"><div class="dname">${esc(c.d.name)}</div><div class="ext"><span>${ICON.phoneSm}${esc(c.d.ext)}</span><span>· ${esc(c.d.building)}</span></div></div>
       <span class="pill st-${esc(c.status)}">${SHORT[c.status] || esc(c.status)}</span></div>
     <div class="case-b">
       ${patientBox(c)}
-      ${timeline(c, Date.now())}
+      ${show ? timeline(c, Date.now()) : ''}
     </div>
-    <div class="case-f"><span title="ผู้ฝาก → ผู้รับทราบ">${esc(who)}</span>
-      ${open ? `<button type="button" class="xbtn" data-act="cancel" data-id="${esc(c.id)}" aria-label="ยกเลิกเคสนี้ (ฝากผิดแผนกหรือซ้ำ)">${ICON.x} ยกเลิก</button>` : ''}</div>
+    <div class="case-f"><span title="ผู้ฝาก → ผู้รับเรื่อง">ฝาก ${hm(c.created)} · ${esc(who)}</span>
+      <span class="row-w" style="gap:2px">
+        <button type="button" class="xbtn tl-btn" data-act="toggle-tl" data-id="${esc(c.id)}" aria-expanded="${show}">${show ? 'ซ่อนเวลา ▴' : 'ดูเวลา ▾'}</button>
+        ${open ? `<button type="button" class="xbtn" data-act="cancel" data-id="${esc(c.id)}" aria-label="ยกเลิกเคสนี้ (ฝากผิดแผนกหรือซ้ำ)">${ICON.x} ยกเลิก</button>` : ''}
+      </span></div>
   </article>`;
 }
 
@@ -1008,8 +1023,8 @@ function renderDept() {
   $('#alarm').innerHTML = pending.length ? `<div class="alarm" role="alert"><div class="wrap alarm-in">
       ${ICON.bellBig}
       <div style="flex:1;min-width:240px"><div class="alarm-t">มีคนไข้รอให้โทรกลับ ${pending.length} ราย</div>
-        <div class="alarm-s">เสียงจะดังต่อเนื่องจนกว่าจะมีผู้กดรับทราบ</div></div>
-      <button type="button" class="btn btn-light btn-xl" style="color:var(--red-d);border:none" data-act="ack-all">รับทราบทั้งหมด</button>
+        <div class="alarm-s">เสียงจะดังต่อเนื่องจนกว่าจะมีผู้กดรับเรื่อง</div></div>
+      <button type="button" class="btn btn-light btn-xl" style="color:var(--red-d);border:none" data-act="ack-all">รับเรื่องทั้งหมด</button>
     </div></div>` : '';
 
   const todays = all.filter((c) => c.day === today);
@@ -1017,7 +1032,7 @@ function renderDept() {
   const avg = acked.length ? acked.reduce((t, c) => t + c.ackSeconds, 0) / acked.length : 0;
   $('#dstats').innerHTML = [
     kpi('เคสวันนี้', todays.length, 'ที่ Operator ฝากมา', 'blue', ICON.inbox),
-    kpi('รับทราบเฉลี่ย (นาที)', dur(avg * 1000), 'วันนี้', 'amber', ICON.clock),
+    kpi('รับเรื่องเฉลี่ย (นาที)', dur(avg * 1000), 'วันนี้', 'amber', ICON.clock),
     kpi('โทรกลับสำเร็จ', todays.filter((c) => c.status === 'done').length, 'วันนี้', 'green', ICON.check)
   ].join('');
 
@@ -1043,18 +1058,18 @@ function deptCard(c, now) {
   return `<article class="dcase glass s-${esc(c.status)}">
     <div style="display:flex;justify-content:space-between;align-items:center;gap:10px">
       <div class="row-w"><span class="pill lg st-${esc(c.status)}">${SHORT[c.status]}</span>${c.urgent ? '<span class="urgent">ด่วน</span>' : ''}</div>
-      <span class="wait ${pending && late ? 'late' : ''}">${ICON.clockSm} รอ <span data-since="${c.created}" data-fmt="dur">${dur(now - c.created)}</span> นาที</span>
+      <span class="wait ${pending && late ? 'late' : ''}">${ICON.clockSm} รอ <span data-since="${c.created}" data-fmt="wait">${longDur(now - c.created)}</span></span>
     </div>
     <div class="stack-sm" style="gap:6px"><div class="big-name">${esc(c.patientName)}</div>
       <div class="tags"><span class="tag-topic">${esc(c.topic)}</span>${c.hn ? `<span class="tag-topic">HN ${esc(c.hn)}</span>` : ''}${c.attempts ? `<span class="tag-warn">โทรไม่ติด ${c.attempts} ครั้ง</span>` : ''}</div>
       ${c.note ? `<div class="pnote" style="border:none;padding:0">${esc(c.note)}</div>` : ''}</div>
     <a class="tel" href="tel:${esc(tel)}">${ICON.phone}<span>${esc(fmtPhone(c.phone))}</span></a>
     ${pending
-      ? `<button type="button" class="btn btn-red btn-xl" data-act="ack" data-id="${esc(c.id)}">รับทราบ</button>`
+      ? `<button type="button" class="btn btn-red btn-xl" data-act="ack" data-id="${esc(c.id)}">รับเรื่อง</button>`
       : `<div class="stack-sm">
-          <div class="sub">รับทราบ ${c.ackMs ? hm(c.ackMs) : ''} · ID ${esc(c.ackEmpId || '-')}</div>
+          <div class="sub">รับเรื่อง ${c.ackMs ? hm(c.ackMs) : ''} · ID ${esc(c.ackEmpId || '-')}</div>
           <div class="acts">
-            <button type="button" class="btn btn-green" data-act="done" data-id="${esc(c.id)}">ติดต่อได้แล้ว</button>
+            <button type="button" class="btn btn-green" data-act="done" data-id="${esc(c.id)}">ติดต่อแล้ว</button>
             <button type="button" class="btn btn-light" data-act="retry" data-id="${esc(c.id)}">โทรไม่ติด · ลองใหม่</button>
           </div>
           <div class="row-w" style="gap:16px">
@@ -1072,7 +1087,7 @@ async function ackCase(id, empId) {
     const snap = await tx.get(ref);
     if (!snap.exists()) return false;
     const c = snap.data();
-    if (c.status !== 'pending') return false; // มีคนรับทราบไปแล้ว
+    if (c.status !== 'pending') return false; // มีคนรับเรื่องไปแล้ว
     const created = tms(c.createdAt) || Date.now();
     const sec = Math.max(0, Math.round((Date.now() - created) / 1000));
     tx.update(ref, { status: 'ack', ackAt: serverTimestamp(), ackEmpId: empId, ackByUid: S.user.uid, ackSeconds: sec });
@@ -1098,7 +1113,7 @@ async function closeCase(id, status) {
     const st = { [status]: increment(1) };
     const ackMs = tms(c.ackAt);
     if (status !== 'cancelled' && ackMs) {
-      // เวลาตั้งแต่รับทราบจนปิดเคส
+      // เวลาตั้งแต่รับเรื่องจนปิดเคส
       const resolveSec = Math.max(0, Math.round((Date.now() - ackMs) / 1000));
       upd.resolveSeconds = resolveSec;
       st.resolveCount = increment(1); st.resolveSum = increment(resolveSec);
@@ -1136,7 +1151,7 @@ async function recordAttempt(id) {
 function openAck(target) {
   const pend = S.cases.filter((c) => c.status === 'pending');
   let sub = '';
-  if (target === 'all') sub = `รับทราบเคสที่รออยู่ทั้งหมด ${pend.length} ราย`;
+  if (target === 'all') sub = `รับเรื่องเคสที่รออยู่ทั้งหมด ${pend.length} ราย`;
   else {
     const c = S.cases.find((x) => x.id === target);
     sub = c ? `คนไข้: ${esc(c.patientName)} · ${esc(c.phone)}` : '';
@@ -1144,12 +1159,12 @@ function openAck(target) {
   S.dialog = { type: 'ack', target };
   $('#dialog').innerHTML = `<div class="overlay">
     <form id="ack-form" class="dialog" role="dialog" aria-modal="true" aria-labelledby="dlg-t" novalidate>
-      <div><h2 id="dlg-t" class="h2">ยืนยันการรับทราบ</h2><p class="sub2">${sub}</p></div>
+      <div><h2 id="dlg-t" class="h2">ยืนยันการรับเรื่อง</h2><p class="sub2">${sub}</p></div>
       <div class="field"><label for="emp-id">รหัสพนักงาน (ID)</label>
         <input id="emp-id" name="emp" class="input emp" inputmode="numeric" autocomplete="off" maxlength="12" placeholder="เช่น 10234"></div>
       <div id="dlg-msg"></div>
       <div class="dlg-btns"><button type="button" class="btn btn-light" data-act="dlg-close">ยกเลิก</button>
-        <button type="submit" class="btn btn-red">รับทราบ</button></div>
+        <button type="submit" class="btn btn-red">รับเรื่อง</button></div>
       <div class="sub">เสียงเตือนจะหยุดเมื่อยืนยันรหัสพนักงานแล้ว</div>
     </form></div>`;
   setTimeout(() => { const i = $('#emp-id'); if (i) i.focus(); }, 30);
@@ -1167,7 +1182,7 @@ async function submitAck(form) {
     let n = 0;
     for (const id of ids) { if (await ackCase(id, emp)) n += 1; }
     closeDialog();
-    toast('ok', n ? `รับทราบแล้ว ${n} เคส โดย ID ${esc(emp)}` : 'เคสนี้มีผู้รับทราบไปแล้ว');
+    toast('ok', n ? `รับเรื่องแล้ว ${n} เคส โดย ID ${esc(emp)}` : 'เคสนี้มีผู้รับเรื่องไปแล้ว');
   } catch (err) {
     box.innerHTML = msgHtml('error', thaiErr(err));
     btn.disabled = false;
@@ -1218,7 +1233,7 @@ async function loadStats() {
   const { start, end, label } = statsRange();
   area.innerHTML = `
     <div class="page-head">
-      <div><h1 class="h1">สถิติการไม่รับสายของแผนก</h1><p class="sub2">${esc(label)} · ทุกแผนก</p></div>
+      <div><h1 class="h1">สถิติการให้บริการ</h1><p class="sub2">${esc(label)} · ทุกแผนก</p></div>
       <div class="head-actions">
         <div class="segbox" role="group" aria-label="ช่วงเวลา">${[['today', 'วันนี้'], ['7', '7 วัน'], ['30', '30 วัน']].map(([v, l]) =>
           `<button type="button" data-act="range" data-v="${v}" class="${S.statsRange === v ? 'on' : ''}" aria-pressed="${S.statsRange === v}">${l}</button>`).join('')}</div>
@@ -1269,16 +1284,16 @@ function renderStats(docs) {
 
   body.innerHTML = `
   <div class="kpis kpis5">
-    ${kpi('เคสที่แผนกไม่รับสาย', total, 'ไม่รวมเคสที่ Operator ยกเลิก', 'blue', ICON.inbox)}
-    ${kpi('เวลารับทราบเฉลี่ย', dur(ackCount ? (ackSum / ackCount) * 1000 : 0), 'นาที ตั้งแต่ Operator ฝากเคส', 'amber', ICON.clock)}
-    ${kpi('รับทราบ → โทร เฉลี่ย', dur(callCount ? (callSum / callCount) * 1000 : 0), `นาที · จาก ${callCount} เคส`, 'blue', ICON.phone)}
-    ${kpi(`รับทราบช้ากว่า ${ESCALATE_MIN} นาที`, late, `${pct(late, ackCount)}% ของเคสที่รับทราบแล้ว`, 'red', ICON.alert)}
+    ${kpi('เคสติดต่อกลับทั้งหมด', total, 'ไม่รวมเคสที่ Operator ยกเลิก', 'blue', ICON.inbox)}
+    ${kpi('เวลารับเรื่องเฉลี่ย', dur(ackCount ? (ackSum / ackCount) * 1000 : 0), 'นาที ตั้งแต่ Operator ฝากเคส', 'amber', ICON.clock)}
+    ${kpi('รับเรื่อง → โทร เฉลี่ย', dur(callCount ? (callSum / callCount) * 1000 : 0), `นาที · จาก ${callCount} เคส`, 'blue', ICON.phone)}
+    ${kpi(`รับเรื่องช้ากว่า ${ESCALATE_MIN} นาที`, late, `${pct(late, ackCount)}% ของเคสที่รับเรื่องแล้ว`, 'red', ICON.alert)}
     ${kpi('โทรกลับสำเร็จ', pct(done, closedN) + '%', `${done} จาก ${closedN} เคสที่ปิดแล้ว`, 'green', ICON.check)}
   </div>
   <div class="st-grid">
     <section class="glass card stack-sm">
-      <div><h2 class="h2" style="font-size:18px">แผนกที่ไม่รับสาย มากไปน้อย</h2><p class="sub">จำนวนเคสที่ Operator ต้องฝากให้โทรกลับ</p></div>
-      <div class="trow head"><div>แผนก</div><div class="hide-sm"></div><div class="r">เคส</div><div class="r hide-sm">รับทราบเฉลี่ย</div><div class="r hide-sm">รับทราบ→โทร</div><div class="r hide-sm">ช้ากว่า ${ESCALATE_MIN} น.</div><div class="r hide-sm">สำเร็จ</div></div>
+      <div><h2 class="h2" style="font-size:18px">เคสติดต่อกลับแยกตามแผนก</h2><p class="sub">เรียงจากจำนวนเคสมากไปน้อย</p></div>
+      <div class="trow head"><div>แผนก</div><div class="hide-sm"></div><div class="r">เคส</div><div class="r hide-sm">รับเรื่องเฉลี่ย</div><div class="r hide-sm">รับเรื่อง→โทร</div><div class="r hide-sm">ช้ากว่า ${ESCALATE_MIN} น.</div><div class="r hide-sm">สำเร็จ</div></div>
       ${rows.map((r, i) => {
         const avg = r.ackCount ? r.ackSum / r.ackCount : 0;
         const avgCall = r.callCount ? r.callSum / r.callCount : null;
@@ -1308,8 +1323,83 @@ function renderStats(docs) {
             <span class="mono" style="font-weight:600">${n}</span><span class="mono muted" style="width:52px;text-align:right">${pct(n, total)}%</span></div>`).join('')}
       </section>
     </div>
-  </div>`;
+  </div>
+  ${S.profile && S.profile.role === 'admin' ? `
+  <section class="glass card stack-sm" aria-labelledby="staff-t">
+    <div class="board-head">
+      <div><h2 id="staff-t" class="h2" style="font-size:18px">สถิติรายพนักงาน</h2><p class="sub">เห็นเฉพาะผู้ดูแลระบบ · นับจากรหัสพนักงานที่กรอกตอนรับเรื่อง</p></div>
+      <div class="row-w"><button type="button" class="btn btn-light sm" data-act="staff-load">แสดงสถิติรายพนักงาน</button></div>
+    </div>
+    <div id="staff-body"></div>
+  </section>` : ''}`;
 }
+
+async function loadStaff(btn) {
+  const box = $('#staff-body'); if (!box) return;
+  const { start, end, label } = statsRange();
+  btn.disabled = true; box.innerHTML = '<div class="sub">กำลังโหลด…</div>';
+  try {
+    const snap = await getDocs(query(collection(db, 'cases'), where('day', '>=', start), where('day', '<=', end)));
+    const g = {};
+    snap.docs.forEach((d) => {
+      const c = d.data();
+      if (!c.ackEmpId) return;
+      const k = `${c.deptId}|${c.ackEmpId}`;
+      const r = g[k] || (g[k] = { dept: (S.deptMap[c.deptId] && S.deptMap[c.deptId].name) || c.deptName || '-', emp: c.ackEmpId,
+        n: 0, ackSum: 0, ackN: 0, callSum: 0, callN: 0, done: 0, fail: 0, open: 0, last: 0 });
+      r.n += 1;
+      if (typeof c.ackSeconds === 'number') { r.ackSum += c.ackSeconds; r.ackN += 1; }
+      if (typeof c.callSeconds === 'number') { r.callSum += c.callSeconds; r.callN += 1; }
+      if (c.status === 'done') r.done += 1;
+      else if (c.status === 'fail' || c.status === 'wrong') r.fail += 1;
+      else if (c.status === 'ack') r.open += 1;
+      r.last = Math.max(r.last, tms(c.ackAt) || 0);
+    });
+    S.staffRows = Object.values(g).sort((a, b) => a.dept.localeCompare(b.dept, 'th') || b.n - a.n);
+    if (!S.staffRows.length) { box.innerHTML = '<div class="empty">ยังไม่มีข้อมูลการรับเรื่องในช่วงเวลานี้</div>'; return; }
+    const avg = (sum, n) => (n ? shortDur((sum / n) * 1000) : '-');
+    const R = 'style="text-align:right"';
+    box.innerHTML = `
+      <div class="row-w" style="justify-content:space-between"><span class="sub">${S.staffRows.length} รายการ · ${esc(label)}</span>
+        <button type="button" class="btn btn-light sm" data-act="staff-export">${ICON.download} ดาวน์โหลด Excel</button></div>
+      <div class="tbl-wrap"><table>
+        <thead><tr><th>แผนก</th><th>ID พนักงาน</th><th ${R}>รับเรื่อง (เคส)</th><th ${R}>รับเรื่องเฉลี่ย</th>
+          <th ${R}>รับเรื่อง→โทร</th><th ${R}>ติดต่อแล้ว</th><th ${R}>ติดต่อไม่ได้/เบอร์ผิด</th><th ${R}>ยังค้าง</th><th>รับเรื่องล่าสุด</th></tr></thead>
+        <tbody>${S.staffRows.map((r) => `<tr>
+          <td>${esc(r.dept)}</td><td style="font-weight:600">${esc(r.emp)}</td><td ${R}><b>${r.n}</b></td>
+          <td ${R}>${avg(r.ackSum, r.ackN)}</td><td ${R}>${avg(r.callSum, r.callN)}</td>
+          <td ${R}>${r.done}</td><td ${R}>${r.fail}</td>
+          <td style="text-align:right;${r.open ? 'color:var(--amber);font-weight:600' : ''}">${r.open}</td>
+          <td class="muted">${r.last ? `${new Date(r.last).toLocaleDateString('th-TH', { day: 'numeric', month: 'short' })} ${hm(r.last)}` : '-'}</td></tr>`).join('')}</tbody>
+      </table></div>`;
+  } catch (err) { box.innerHTML = msgHtml('error', thaiErr(err)); }
+  finally { btn.disabled = false; }
+}
+
+function downloadCSV(lines, filename) {
+  const cell = (v) => {
+    let x = String(v ?? '');
+    if (/^[=+@]/.test(x)) x = "'" + x; // กันสูตรใน Excel
+    return `"${x.replace(/"/g, '""')}"`;
+  };
+  const csv = '﻿' + lines.map((r) => r.map(cell).join(',')).join('\r\n');
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8' }));
+  a.download = filename;
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(a.href), 2000);
+}
+
+function exportStaff() {
+  const { start, end } = statsRange();
+  const m = (sum, n) => (n ? (sum / n / 60).toFixed(1) : '');
+  const lines = [['แผนก', 'ID พนักงาน', 'รับเรื่อง (เคส)', 'นาทีรับเรื่องเฉลี่ย', 'นาทีรับเรื่อง→โทร เฉลี่ย', 'ติดต่อแล้ว', 'ติดต่อไม่ได้/เบอร์ผิด', 'ยังค้าง', 'รับเรื่องล่าสุด']]
+    .concat(S.staffRows.map((r) => [r.dept, r.emp, r.n, m(r.ackSum, r.ackN), m(r.callSum, r.callN), r.done, r.fail, r.open,
+      r.last ? `${dayKey(new Date(r.last))} ${hms(r.last)}` : '']));
+  downloadCSV(lines, `staff_${start}_${end}.csv`);
+  toast('ok', `ดาวน์โหลดแล้ว ${S.staffRows.length} รายการ`);
+}
+
 
 async function exportCSV(btn) {
   const { start, end } = statsRange();
@@ -1321,7 +1411,7 @@ async function exportCSV(btn) {
     const fmt = (t) => { const ms = tms(t); return ms ? hms(ms) : ''; };
     const mins = (sec) => (typeof sec === 'number' ? (sec / 60).toFixed(1) : '');
     const header = ['วันที่', 'เวลาฝาก', 'แผนก', 'ชื่อคนไข้', 'เบอร์โทร', 'HN', 'เรื่อง', 'รายละเอียด', 'ด่วน', 'สถานะ', 'Operator',
-      'เวลารับทราบ', 'ID ผู้รับทราบ', 'นาทีถึงรับทราบ', 'เวลาโทรครั้งแรก', 'นาทีรับทราบ→โทร', 'โทรไม่ติด (ครั้ง)', 'เวลาปิดเคส', 'นาทีรับทราบ→ปิดเคส'];
+      'เวลารับเรื่อง', 'ID ผู้รับเรื่อง', 'นาทีถึงรับเรื่อง', 'เวลาโทรครั้งแรก', 'นาทีรับเรื่อง→โทร', 'โทรไม่ติด (ครั้ง)', 'เวลาปิดเคส', 'นาทีรับเรื่อง→ปิดเคส'];
     const lines = [header].concat(rows.map((c) => [
       c.day, fmt(c.createdAt), (S.deptMap[c.deptId] && S.deptMap[c.deptId].name) || c.deptName, c.patientName, c.phone, c.hn,
       c.topic, c.note, c.urgent ? 'ด่วน' : '', STATUS[c.status] || c.status, c.createdByName,
@@ -1366,7 +1456,7 @@ function loadAdmin() {
   </section>
 
   <section class="glass card stack">
-    <div class="sec-head"><h2 class="h2">บัญชีผู้ใช้</h2><span class="sub">บัญชีแผนกใช้ร่วมกันทั้งแผนก ผู้รับทราบเคสยืนยันด้วยรหัสพนักงาน</span></div>
+    <div class="sec-head"><h2 class="h2">บัญชีผู้ใช้</h2><span class="sub">บัญชีแผนกใช้ร่วมกันทั้งแผนก ผู้รับเรื่องเคสยืนยันด้วยรหัสพนักงาน</span></div>
     <form id="user-form" class="admin-form" novalidate>
       <div class="field"><label for="u-name">ชื่อผู้ใช้ (ใช้ login)</label><input id="u-name" name="username" class="input mono" maxlength="30" placeholder="เช่น med01" autocapitalize="off" spellcheck="false"></div>
       <div class="field"><label for="u-disp">ชื่อที่แสดง</label><input id="u-disp" name="displayName" class="input" maxlength="60" placeholder="เช่น Operator 01"></div>
@@ -1544,6 +1634,9 @@ document.addEventListener('click', async (e) => {
     case 'fail': if (confirm('ปิดเคสนี้เป็น "ติดต่อคนไข้ไม่ได้"?')) await guard(closeCase(id, 'fail'), 'ปิดเคสแล้ว'); break;
     case 'wrong': if (confirm('ปิดเคสนี้เป็น "เบอร์ไม่ถูกต้อง"?')) await guard(closeCase(id, 'wrong'), 'ปิดเคสแล้ว'); break;
     case 'toggle-closed': S.showClosed = !S.showClosed; renderDept(); break;
+    case 'toggle-tl': if (S.expanded.has(id)) S.expanded.delete(id); else S.expanded.add(id); renderBoard(); break;
+    case 'staff-load': await loadStaff(el); break;
+    case 'staff-export': exportStaff(); break;
     case 'range': S.statsRange = el.dataset.v; loadStats(); break;
     case 'export': await exportCSV(el); break;
     case 'seed-depts': await seedDepts(el); break;
