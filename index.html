@@ -188,7 +188,15 @@ textarea.input{height:auto;padding:10px 14px;resize:vertical}
 .tl em{font-style:normal;font-size:12px;color:var(--muted)}
 .case.clickable{cursor:pointer;transition:box-shadow .15s}
 .case.clickable:hover{box-shadow:0 16px 36px rgba(36,58,140,.16),inset 0 1px 0 rgba(255,255,255,.9)}
-.xbtn.tl-btn:hover{background:var(--blue-l);color:var(--blue-d)}
+.corner{display:flex;align-items:center;gap:6px;flex:none}
+.trash{width:36px;height:36px;border-radius:12px;border:1px solid rgba(229,72,77,.25);background:rgba(255,236,236,.85);color:var(--red-t);display:inline-flex;align-items:center;justify-content:center;cursor:pointer;flex:none;transition:background .15s,color .15s,transform .1s}
+.trash:hover{background:var(--red);color:#fff;border-color:var(--red)}
+.trash:active{transform:scale(.94)}
+.trash.on-red{background:rgba(255,255,255,.2);border-color:rgba(255,255,255,.35);color:#fff}
+.trash.on-red:hover{background:#fff;color:var(--red-d)}
+.case.clickable:focus-visible{outline:3px solid var(--blue);outline-offset:3px}
+.btn-glass{background:rgba(255,255,255,.55);border:1px solid rgba(255,255,255,.95);color:var(--ink2);backdrop-filter:blur(14px) saturate(160%);-webkit-backdrop-filter:blur(14px) saturate(160%);box-shadow:0 6px 16px rgba(36,58,140,.08),inset 0 1px 0 rgba(255,255,255,.9);font-weight:600;min-height:46px;font-size:15px}
+.btn-glass:hover{background:rgba(255,236,236,.8);border-color:rgba(229,72,77,.35);color:var(--red-t)}
 .case-f{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:8px 16px;border-top:1px solid rgba(214,222,245,.7);font-size:12px;color:var(--muted);min-height:44px}
 .xbtn{background:none;border:none;color:var(--muted);font-size:13px;cursor:pointer;min-height:36px;padding:0 6px;border-radius:8px;display:inline-flex;align-items:center;gap:4px}
 .xbtn:hover{background:rgba(229,72,77,.08);color:var(--red-t)}
@@ -397,6 +405,7 @@ const ICON = {
   clockSm: '<svg class="ic" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>',
   check: '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg>',
   inbox: '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M22 12h-6l-2 3h-4l-2-3H2"/><path d="M5.45 5.11 2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z"/></svg>',
+  trash: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 6h18"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6M14 11v6"/></svg>',
   x: '<svg class="ic" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12"/></svg>'
 };
 
@@ -983,7 +992,7 @@ function escCard(c) {
       ${patientBox(c)}
     </div>
     <div class="case-f"><span>ฝาก ${hm(c.created)} · ${esc(shortName(c.createdByName))}</span>
-      <button type="button" class="xbtn" data-act="cancel" data-id="${esc(c.id)}" aria-label="ยกเลิกเคสนี้">${ICON.x} ยกเลิก</button></div>
+      <button type="button" class="trash on-red" data-act="cancel" data-id="${esc(c.id)}" aria-label="ยกเลิกเคสนี้ (ฝากผิดแผนกหรือซ้ำ)" title="ยกเลิกเคส">${ICON.trash}</button></div>
   </article>`;
 }
 
@@ -991,18 +1000,16 @@ function opCard(c) {
   const open = OPEN.includes(c.status);
   const who = [shortName(c.createdByName), c.ackEmpId ? `ID ${c.ackEmpId}` : ''].filter(Boolean).join(' → ');
   const show = S.expanded.has(c.id);
-  return `<article class="case glass s-${esc(c.status)} clickable" data-act="toggle-tl" data-id="${esc(c.id)}">
+  return `<article class="case glass s-${esc(c.status)} clickable${show ? ' expanded' : ''}" data-act="toggle-tl" data-id="${esc(c.id)}"
+      tabindex="0" title="คลิกเพื่อ${show ? 'ซ่อน' : 'ดู'}รายละเอียดเวลา">
     <div class="case-h"><div style="min-width:0"><div class="dname">${esc(c.d.name)}</div><div class="ext"><span>${ICON.phoneSm}${esc(c.d.ext)}</span><span>· ${esc(c.d.building)}</span></div></div>
-      <span class="pill st-${esc(c.status)}">${SHORT[c.status] || esc(c.status)}</span></div>
+      <div class="corner"><span class="pill st-${esc(c.status)}">${SHORT[c.status] || esc(c.status)}</span>
+        ${open ? `<button type="button" class="trash" data-act="cancel" data-id="${esc(c.id)}" aria-label="ยกเลิกเคสนี้ (ฝากผิดแผนกหรือซ้ำ)" title="ยกเลิกเคส">${ICON.trash}</button>` : ''}</div></div>
     <div class="case-b">
       ${patientBox(c)}
       ${show ? timeline(c, Date.now()) : ''}
     </div>
-    <div class="case-f"><span title="ผู้ฝาก → ผู้รับเรื่อง">ฝาก ${hm(c.created)} · ${esc(who)}</span>
-      <span class="row-w" style="gap:2px">
-        <button type="button" class="xbtn tl-btn" data-act="toggle-tl" data-id="${esc(c.id)}" aria-expanded="${show}">${show ? 'ซ่อนเวลา ▴' : 'ดูเวลา ▾'}</button>
-        ${open ? `<button type="button" class="xbtn" data-act="cancel" data-id="${esc(c.id)}" aria-label="ยกเลิกเคสนี้ (ฝากผิดแผนกหรือซ้ำ)">${ICON.x} ยกเลิก</button>` : ''}
-      </span></div>
+    ${show ? `<div class="case-f"><span>ฝาก ${hm(c.created)} · ${esc(who)}</span><span>ซ่อน ▴</span></div>` : ''}
   </article>`;
 }
 
@@ -1072,10 +1079,8 @@ function deptCard(c, now) {
             <button type="button" class="btn btn-green" data-act="done" data-id="${esc(c.id)}">ติดต่อแล้ว</button>
             <button type="button" class="btn btn-light" data-act="retry" data-id="${esc(c.id)}">โทรไม่ติด · ลองใหม่</button>
           </div>
-          <div class="row-w" style="gap:16px">
-            <button type="button" class="linkbtn ink2" data-act="fail" data-id="${esc(c.id)}">ปิดเคส: ติดต่อไม่ได้</button>
-            <button type="button" class="linkbtn ink2" data-act="wrong" data-id="${esc(c.id)}">ปิดเคส: เบอร์ไม่ถูกต้อง</button>
-          </div></div>`}
+          <button type="button" class="btn btn-glass" data-act="fail" data-id="${esc(c.id)}">${ICON.x} ปิดเคส: ติดต่อไม่ได้</button>
+        </div>`}
     <div class="sub">ฝาก ${hm(c.created)} · ${esc(shortName(c.createdByName))}</div>
   </article>`;
 }
@@ -1677,6 +1682,15 @@ document.addEventListener('change', (e) => {
 
 document.addEventListener('keydown', (e) => {
   if (e.key === 'Escape' && S.dialog) closeDialog();
+  const card = e.target.closest && e.target.closest('.case.clickable');
+  if (card && e.target === card && (e.key === 'Enter' || e.key === ' ')) {
+    e.preventDefault();
+    const id = card.dataset.id;
+    if (S.expanded.has(id)) S.expanded.delete(id); else S.expanded.add(id);
+    renderBoard();
+    const again = document.querySelector(`.case.clickable[data-id="${CSS.escape(id)}"]`);
+    if (again) again.focus();
+  }
 });
 window.addEventListener('online', paintNet);
 window.addEventListener('offline', paintNet);
