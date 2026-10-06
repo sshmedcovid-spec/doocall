@@ -312,7 +312,7 @@ th{color:var(--muted);font-weight:600;font-size:13px}
 @media (max-width:860px){.login{grid-template-columns:1fr}.login-brand{display:none}.login-mini{display:flex}}
 @media (max-width:720px){.dstats,.dcards{grid-template-columns:1fr}.wrap{padding-left:16px;padding-right:16px}.kpis,.kpis.kpis5{grid-template-columns:1fr}}
 @media (max-width:640px){.trow{grid-template-columns:minmax(0,1fr) 60px}.hide-sm{display:none}}
-/* น้อง DOO */
+/* น้องกริ๊งกริ๊ง */
 .doo{overflow:visible;flex:none}
 .doo *{transform-box:view-box}
 .doo .bodyg{animation:dooBob 2.4s ease-in-out infinite;transform-origin:100px 186px}
@@ -326,7 +326,9 @@ th{color:var(--muted);font-weight:600;font-size:13px}
 .doo-sleep .bodyg{animation:dooBreath 3.2s ease-in-out infinite}
 .doo-sleep .zz{animation:dooFloat 2.4s ease-in-out infinite}
 .doo-bubble{width:92px;height:92px;border-radius:28px;background:rgba(255,255,255,.92);display:flex;align-items:center;justify-content:center;box-shadow:0 10px 24px rgba(80,0,0,.25);flex:none}
-.doo-pop{position:fixed;left:50%;top:50%;transform:translate(-50%,-50%);z-index:70;background:rgba(255,255,255,.95);border:1px solid #fff;border-radius:28px;padding:22px 30px 24px;box-shadow:0 30px 70px rgba(11,27,63,.28);display:flex;flex-direction:column;align-items:center;gap:6px;text-align:center;animation:dooPop 2.6s ease both}
+.calm{background:rgba(255,255,255,.55);border-bottom:1px solid rgba(255,255,255,.9);backdrop-filter:blur(18px);-webkit-backdrop-filter:blur(18px)}
+.calm-b{box-shadow:0 8px 20px rgba(36,58,140,.12)}
+.doo-pop{position:fixed;left:50%;top:50%;transform:translate(-50%,-50%);z-index:70;background:rgba(255,255,255,.95);border:1px solid #fff;border-radius:28px;padding:22px 30px 24px;box-shadow:0 30px 70px rgba(11,27,63,.28);display:flex;flex-direction:column;align-items:center;gap:6px;text-align:center;animation:dooPop 5s ease both}
 .doo-pop-t{font-family:'Prompt',sans-serif;font-size:22px;font-weight:600;color:var(--blue-d)}
 .doo-pop-s{font-size:14px;color:var(--muted)}
 @keyframes dooBob{0%,100%{transform:translateY(0)}50%{transform:translateY(-4px)}}
@@ -338,7 +340,7 @@ th{color:var(--muted);font-weight:600;font-size:13px}
 @keyframes dooJump{from{transform:translateY(0)}to{transform:translateY(-16px)}}
 @keyframes dooFloat{0%,100%{transform:translateY(0)}50%{transform:translateY(-6px)}}
 @keyframes dooBreath{0%,100%{transform:scaleY(1)}50%{transform:scaleY(.97)}}
-@keyframes dooPop{0%{opacity:0;transform:translate(-50%,-40%) scale(.8)}12%{opacity:1;transform:translate(-50%,-50%) scale(1.04)}20%{transform:translate(-50%,-50%) scale(1)}85%{opacity:1}100%{opacity:0;transform:translate(-50%,-55%) scale(.96)}}
+@keyframes dooPop{0%{opacity:0;transform:translate(-50%,-40%) scale(.8)}6%{opacity:1;transform:translate(-50%,-50%) scale(1.04)}10%{transform:translate(-50%,-50%) scale(1)}92%{opacity:1}100%{opacity:0;transform:translate(-50%,-55%) scale(.96)}}
 @media (prefers-reduced-motion:reduce){.kpi.alert,.case.esc,.dcase.s-pending,.ring,.alarm,.tl li.now .d,.doo *,.doo-pop{animation:none!important}}
 </style>
 </head>
@@ -366,7 +368,7 @@ const USER_DOMAIN = 'callback.local'; // ชื่อผู้ใช้ "op01" �
 const ESCALATE_MIN = 10;              // ไม่มีผู้รับเรื่องเกินกี่นาที ให้ขึ้นแดงเข้มที่หน้า Operator
 const RING_EVERY_MS = 2000;           // ความถี่เสียงเตือนที่หน้าแผนก
 const MASK_AFTER_DAYS = 90;           // ปิดบังข้อมูลคนไข้ของเคสที่เก่ากว่ากี่วัน
-const SHOW_DOO = true;                // แสดงน้อง DOO ที่หน้าแผนก (false = ปิด)
+const SHOW_DOO = true;                // แสดงน้องกริ๊งกริ๊ง ที่หน้าแผนก (false = ปิด)
 
 const TOPICS = ['นัดหมาย / เลื่อนนัด', 'สอบถามผลตรวจ', 'สอบถามอาการ / ยา', 'ค่าใช้จ่าย / ประกัน', 'เอกสาร / ใบรับรองแพทย์', 'อื่นๆ'];
 const DEFAULT_DEPTS = [
@@ -544,7 +546,7 @@ function beep() {
   });
 }
 
-/* ---------- น้อง DOO (มาสคอต) ---------- */
+/* ---------- น้องกริ๊งกริ๊ง (มาสคอต) ---------- */
 const DOO_TEXT = {
   happy: 'สวัสดีค่ะ มีคนไข้รอสายอยู่นะ',
   worried: 'ยังรออยู่น้า…',
@@ -592,7 +594,7 @@ function dooSvg(mood, size = 120) {
     face = `<path d="M72 104 Q80 110 88 104M112 104 Q120 110 128 104" stroke="${ink}" stroke-width="4.5" stroke-linecap="round" fill="none"/><path d="M92 130 Q100 136 108 130" stroke="${ink}" stroke-width="4" stroke-linecap="round" fill="none"/>`;
     extra = '<g class="zz" fill="#60A5FA" font-family="Arial" font-weight="700"><text x="150" y="40" font-size="22">z</text><text x="166" y="24" font-size="16">z</text><text x="178" y="12" font-size="11">z</text></g>';
   }
-  return `<svg class="doo doo-${mood}" viewBox="0 0 200 220" width="${size}" height="${Math.round(size * 1.1)}" role="img" aria-label="น้อง DOO: ${DOO_TEXT[mood]}">
+  return `<svg class="doo doo-${mood}" viewBox="0 0 200 220" width="${size}" height="${Math.round(size * 1.1)}" role="img" aria-label="น้องกริ๊งกริ๊ง: ${DOO_TEXT[mood]}">
     <defs><linearGradient id="${id}" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="${tint[0]}"/><stop offset="1" stop-color="${tint[1]}"/></linearGradient></defs>
     <ellipse class="shadow" cx="100" cy="206" rx="44" ry="7" fill="#0B1B3F" opacity=".12"/>
     <g class="bodyg">
@@ -606,6 +608,16 @@ function dooSvg(mood, size = 120) {
       ${face}${front}
     </g>${extra}</svg>`;
 }
+function calmBar(ackN) {
+  const mood = ackN ? 'happy' : 'sleep';
+  const title = ackN ? 'รับเรื่องครบแล้ว' : 'ไม่มีเคสค้าง';
+  const say = ackN ? `เหลือโทรกลับอีก ${ackN} ราย สู้ๆ นะคะ` : DOO_TEXT.sleep;
+  return `<div class="calm"><div class="wrap alarm-in">
+      <div class="doo-bubble calm-b">${dooSvg(mood, 78)}</div>
+      <div style="flex:1;min-width:240px"><div class="alarm-t" style="color:var(--ink)">${title}</div>
+        <div class="alarm-s" style="color:var(--ink2)">น้องกริ๊งกริ๊ง: “${say}”</div></div>
+    </div></div>`;
+}
 function dooCelebrate(emp, n) {
   if (!SHOW_DOO) return;
   let box = document.getElementById('doo-pop');
@@ -614,7 +626,7 @@ function dooCelebrate(emp, n) {
     <div class="doo-pop-t">ขอบคุณค่ะ ID ${esc(emp)} 💙</div>
     <div class="doo-pop-s">${n > 1 ? `รับเรื่องแล้ว ${n} เคส · ` : ''}แผนกรับเรื่องแล้ว ใครในทีมโทรกลับก็ได้</div></div>`;
   clearTimeout(S.dooTimer);
-  S.dooTimer = setTimeout(() => { box.innerHTML = ''; }, 2600);
+  S.dooTimer = setTimeout(() => { box.innerHTML = ''; }, 5000);
 }
 
 /* ---------- auth ---------- */
@@ -782,7 +794,8 @@ function tick() {
     const pend = S.cases.filter((c) => c.status === 'pending');
     const n = pend.length;
     if (SHOW_DOO) {
-      const md = n ? dooMoodFor(now - Math.min(...pend.map((c) => c.createdMs ?? now))) : 'sleep';
+      const md = n ? dooMoodFor(now - Math.min(...pend.map((c) => c.createdMs ?? now)))
+        : (S.cases.some((c) => c.status === 'ack') ? 'happy' : 'sleep');
       if (md !== S.dooMood) renderDept();
     }
     document.title = n ? `(${n}) มีคนไข้รอโทรกลับ` : 'DOOCALL';
@@ -1135,13 +1148,13 @@ function renderDept() {
 
   const oldest = pending.length ? Math.min(...pending.map((c) => c.created)) : now;
   const mood = dooMoodFor(now - oldest);
-  S.dooMood = pending.length ? mood : 'sleep';
+  S.dooMood = pending.length ? mood : (open.length ? 'happy' : 'sleep');
   $('#alarm').innerHTML = pending.length ? `<div class="alarm" role="alert"><div class="wrap alarm-in">
       ${SHOW_DOO ? `<div class="doo-bubble">${dooSvg(mood, 78)}</div>` : ICON.bellBig}
       <div style="flex:1;min-width:240px"><div class="alarm-t">มีคนไข้รอให้โทรกลับ ${pending.length} ราย</div>
-        <div class="alarm-s">${SHOW_DOO ? `น้อง DOO: “${DOO_TEXT[mood]}” · ` : ''}เสียงจะดังจนกว่าจะมีผู้กดรับเรื่อง</div></div>
+        <div class="alarm-s">${SHOW_DOO ? `น้องกริ๊งกริ๊ง: “${DOO_TEXT[mood]}”` : 'เสียงจะดังจนกว่าจะมีผู้กดรับเรื่อง'}</div></div>
       <button type="button" class="btn btn-light btn-xl" style="color:var(--red-d);border:none" data-act="ack-all">รับเรื่องทั้งหมด</button>
-    </div></div>` : '';
+    </div></div>` : (SHOW_DOO ? calmBar(open.length) : '');
 
   const todays = all.filter((c) => c.day === today);
   const acked = todays.filter((c) => typeof c.ackSeconds === 'number');
@@ -1155,9 +1168,8 @@ function renderDept() {
   listBox.innerHTML = open.length
     ? `<div class="dcards">${open.map((c) => deptCard(c, now)).join('')}</div>`
     : `<div class="glass card" style="text-align:center;padding:36px 24px;display:flex;flex-direction:column;align-items:center;gap:6px">
-       ${SHOW_DOO ? dooSvg('sleep', 120) : ''}
        <div class="h2" style="color:var(--green)">ไม่มีเคสค้าง</div>
-       <div class="sub2">${SHOW_DOO ? 'น้อง DOO: “วันนี้เรียบร้อยดีมาก” · ' : ''}เมื่อ Operator ฝากเคสใหม่ จะมีเสียงเตือนและแถบสีแดงขึ้นด้านบน</div></div>`;
+       <div class="sub2">เมื่อ Operator ฝากเคสใหม่ จะมีเสียงเตือนและแถบสีแดงขึ้นด้านบน</div></div>`;
 
   $('#dclosed').innerHTML = `
     <button type="button" class="btn btn-light sm" style="align-self:flex-start" data-act="toggle-closed" aria-expanded="${S.showClosed}">
