@@ -197,6 +197,23 @@ textarea.input{height:auto;padding:10px 14px;resize:vertical}
 .case.clickable:focus-visible{outline:3px solid var(--blue);outline-offset:3px}
 .btn-glass{background:rgba(255,255,255,.55);border:1px solid rgba(255,255,255,.95);color:var(--ink2);backdrop-filter:blur(14px) saturate(160%);-webkit-backdrop-filter:blur(14px) saturate(160%);box-shadow:0 6px 16px rgba(36,58,140,.08),inset 0 1px 0 rgba(255,255,255,.9);font-weight:600;min-height:46px;font-size:15px}
 .btn-glass:hover{background:rgba(255,236,236,.8);border-color:rgba(229,72,77,.35);color:var(--red-t)}
+.case.mis{background:linear-gradient(180deg,rgba(255,241,219,.95) 0%,rgba(255,255,255,.78) 50%);border:2px solid #F5C77E}
+.st-misrouted{background:var(--amber-l);color:var(--amber)}
+.mis-box{background:rgba(255,255,255,.85);border:1px dashed #F5C77E;border-radius:12px;padding:10px 12px;font-size:14px;display:flex;flex-direction:column;gap:2px}
+.reroute{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:8px;align-items:center}
+.reroute .input{height:44px;font-size:15px}
+.xbtn.mis-btn{color:var(--amber);font-weight:600;min-height:40px;padding:0 10px;border:1px solid #F5C77E;background:rgba(255,241,219,.6)}
+.xbtn.mis-btn:hover{background:var(--amber-l);color:var(--amber)}
+.mis-sum{display:flex;flex-direction:column;gap:2px;background:var(--amber-l);color:var(--amber);border-radius:12px;padding:10px 12px;font-size:14px}
+.pres{display:inline-flex;align-items:center;gap:6px;font-size:13px;font-weight:600;margin-top:4px}
+.pres.on{color:var(--green)}
+.pres.off{color:var(--amber)}
+.pres-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:8px}
+.pres-item{display:flex;align-items:center;gap:8px;padding:10px 12px;border-radius:12px;background:rgba(255,255,255,.7);border:1px solid var(--glass-b)}
+.pres-item.off{background:rgba(255,241,219,.7)}
+.rp-chip{display:inline-flex;align-items:center;gap:6px;cursor:pointer}
+.rp-chip input{accent-color:var(--blue);width:16px;height:16px}
+.rp-chip:has(input:checked){background:var(--blue-l);border-color:var(--blue);color:var(--blue-d);font-weight:600}
 .case-f{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:8px 16px;border-top:1px solid rgba(214,222,245,.7);font-size:12px;color:var(--muted);min-height:44px}
 .xbtn{background:none;border:none;color:var(--muted);font-size:13px;cursor:pointer;min-height:36px;padding:0 6px;border-radius:8px;display:inline-flex;align-items:center;gap:4px}
 .xbtn:hover{background:rgba(229,72,77,.08);color:var(--red-t)}
@@ -368,6 +385,11 @@ const USER_DOMAIN = 'callback.local'; // ชื่อผู้ใช้ "op01" �
 const ESCALATE_MIN = 10;              // ไม่มีผู้รับเรื่องเกินกี่นาที ให้ขึ้นแดงเข้มที่หน้า Operator
 const RING_EVERY_MS = 2000;           // ความถี่เสียงเตือนที่หน้าแผนก
 const MASK_AFTER_DAYS = 90;           // ปิดบังข้อมูลคนไข้ของเคสที่เก่ากว่ากี่วัน
+const PRESENCE_EVERY_MIN = 3;          // หน้าแผนกส่งสัญญาณ "จอเปิดอยู่" ทุกกี่นาที
+const PRESENCE_ONLINE_MIN = 7;         // ไม่มีสัญญาณเกินกี่นาที ถือว่าจอแผนกไม่ได้เปิด
+// แจ้งเตือนหัวหน้าแผนกทาง LINE (ผ่าน Google Apps Script) — เว้นว่าง = ปิด
+const LINE_ALERT_URL = '';              // วาง URL ของ Web app จาก Apps Script (ลงท้าย /exec)
+const LINE_ALERT_KEY = 'tWasJyNkT9UkmxeE8otEPtEK';  // ต้องตรงกับ APP_KEY ใน Script Properties
 const SHOW_DOO = true;                // แสดงน้องกริ๊งกริ๊ง ที่หน้าแผนก (false = ปิด)
 
 const TOPICS = ['นัดหมาย / เลื่อนนัด', 'สอบถามผลตรวจ', 'สอบถามอาการ / ยา', 'ค่าใช้จ่าย / ประกัน', 'เอกสาร / ใบรับรองแพทย์', 'อื่นๆ'];
@@ -402,7 +424,7 @@ import {
 } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js';
 import {
   getFirestore, collection, doc, getDoc, getDocs, setDoc, addDoc, updateDoc, onSnapshot, query, where,
-  orderBy, limit, serverTimestamp, increment, writeBatch, runTransaction
+  orderBy, limit, serverTimestamp, increment, writeBatch, runTransaction, deleteField
 } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js';
 
 /* ---------- constants ---------- */
@@ -410,9 +432,9 @@ const OPEN = ['pending', 'ack'];
 const CLOSED = ['done', 'fail', 'wrong', 'cancelled'];
 const STATUS = {
   pending: 'รอรับเรื่อง', ack: 'รับเรื่องแล้ว · รอโทรกลับ', done: 'โทรกลับสำเร็จ',
-  fail: 'ติดต่อคนไข้ไม่ได้', wrong: 'เบอร์ไม่ถูกต้อง', cancelled: 'ยกเลิกโดย Operator'
+  fail: 'ติดต่อคนไข้ไม่ได้', wrong: 'เบอร์ไม่ถูกต้อง', cancelled: 'ยกเลิกโดย Operator', misrouted: 'แผนกแจ้งว่าส่งผิดแผนก'
 };
-const SHORT = { pending: 'รอรับเรื่อง', ack: 'รอโทรกลับ', done: 'สำเร็จ', fail: 'ติดต่อไม่ได้', wrong: 'เบอร์ผิด', cancelled: 'ยกเลิก' };
+const SHORT = { pending: 'รอรับเรื่อง', ack: 'รอโทรกลับ', done: 'สำเร็จ', fail: 'ติดต่อไม่ได้', wrong: 'เบอร์ผิด', cancelled: 'ยกเลิก', misrouted: 'ส่งผิดแผนก' };
 const ROLE = { operator: 'Operator', dept: 'แผนก', admin: 'ผู้ดูแลระบบ' };
 const TABS = [
   ['open', 'งานค้าง', (c) => OPEN.includes(c.status)],
@@ -436,6 +458,8 @@ const ICON = {
   check: '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg>',
   inbox: '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M22 12h-6l-2 3h-4l-2-3H2"/><path d="M5.45 5.11 2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z"/></svg>',
   trash: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 6h18"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6M14 11v6"/></svg>',
+  flag: '<svg class="ic" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 22V4"/><path d="M4 4h12l-2 4 2 4H4"/></svg>',
+  undo: '<svg class="ic" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 14 4 9l5-5"/><path d="M4 9h10.5a5.5 5.5 0 0 1 0 11H11"/></svg>',
   x: '<svg class="ic" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12"/></svg>'
 };
 
@@ -493,7 +517,7 @@ const S = {
   depts: [], deptMap: {}, cases: [], caseA: new Map(), caseB: new Map(),
   unsubs: [], caseUnsubs: [], day: dayKey(), escKey: '',
   tab: 'open', deptFilter: '', form: { topic: '', urgent: false },
-  showClosed: false, expanded: new Set(), staffRows: [], statsRange: 'today', statsFrom: dayKey(), statsTo: dayKey(),
+  showClosed: false, expanded: new Set(), staffRows: [], presence: {}, sent: [], deptTab: 'in', lineTried: new Set(), statsRange: 'today', statsFrom: dayKey(), statsTo: dayKey(),
   audio: null, lastRing: 0, soundState: '', netState: '', dialog: null, editDeptId: null
 };
 
@@ -608,6 +632,25 @@ function dooSvg(mood, size = 120) {
       ${face}${front}
     </g>${extra}</svg>`;
 }
+function renderDeptAlarm(all, pending, open, now) {
+  const box = $('#alarm'); if (!box) return;
+  now = now || Date.now();
+  if (!all) {
+    all = S.cases.map((c) => view(c, now));
+    pending = all.filter((c) => c.status === 'pending');
+    open = all.filter((c) => c.status === 'pending' || c.status === 'ack');
+  }
+  const oldest = pending.length ? Math.min(...pending.map((c) => c.created)) : now;
+  const mood = dooMoodFor(now - oldest);
+  S.dooMood = pending.length ? mood : (open.length ? 'happy' : 'sleep');
+  box.innerHTML = pending.length ? `<div class="alarm" role="alert"><div class="wrap alarm-in">
+      ${SHOW_DOO ? `<div class="doo-bubble">${dooSvg(mood, 78)}</div>` : ICON.bellBig}
+      <div style="flex:1;min-width:240px"><div class="alarm-t">มีคนไข้รอให้โทรกลับ ${pending.length} ราย</div>
+        <div class="alarm-s">${SHOW_DOO ? `น้องกริ๊งกริ๊ง: “${DOO_TEXT[mood]}”` : 'เสียงจะดังจนกว่าจะมีผู้กดรับเรื่อง'}</div></div>
+      <button type="button" class="btn btn-light btn-xl" style="color:var(--red-d);border:none" data-act="ack-all">รับเรื่องทั้งหมด</button>
+    </div></div>` : (SHOW_DOO ? calmBar(open.length) : '');
+}
+
 function calmBar(ackN) {
   const mood = ackN ? 'happy' : 'sleep';
   const title = ackN ? 'รับเรื่องครบแล้ว' : 'ไม่มีเคสค้าง';
@@ -672,6 +715,7 @@ async function handleAuth(user) {
 function cleanup() {
   S.unsubs.forEach((u) => u());
   S.caseUnsubs.forEach((u) => u());
+  clearInterval(S.hb);
   S.unsubs = []; S.caseUnsubs = [];
   S.user = null; S.profile = null; S.cases = []; S.caseA = new Map(); S.caseB = new Map();
   S.depts = []; S.deptMap = {}; S.escKey = '';
@@ -704,6 +748,34 @@ function startListeners() {
     onDeptsChanged();
   }, showSysError));
   subscribeCases();
+  if (S.profile.role === 'dept') {
+    heartbeat();
+    S.hb = setInterval(heartbeat, PRESENCE_EVERY_MIN * 60000);
+  }
+}
+
+function heartbeat() {
+  if (!S.profile || S.profile.role !== 'dept' || !navigator.onLine) return;
+  setDoc(doc(db, 'presence', S.profile.dept), { deptId: S.profile.dept, at: serverTimestamp() }, { merge: true }).catch(() => {});
+}
+document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') heartbeat(); });
+
+async function getPresence(deptId) {
+  const cached = S.presence[deptId];
+  if (cached && Date.now() - cached.fetched < 60000) return cached;
+  try {
+    const snap = await getDoc(doc(db, 'presence', deptId));
+    const at = snap.exists() ? tms(snap.data().at) : null;
+    S.presence[deptId] = { at, fetched: Date.now() };
+  } catch (e) { S.presence[deptId] = { at: null, fetched: Date.now(), err: true }; }
+  return S.presence[deptId];
+}
+const isOnline = (p) => !!(p && p.at && Date.now() - p.at < PRESENCE_ONLINE_MIN * 60000);
+function presenceText(p) {
+  if (!p || p.err) return '';
+  if (isOnline(p)) return '<span class="pres on"><span class="dot" style="background:#16A34A"></span>จอแผนกเปิดอยู่</span>';
+  const last = p.at ? ` (ล่าสุด ${new Date(p.at).toLocaleDateString('th-TH', { day: 'numeric', month: 'short' })} ${hm(p.at)})` : '';
+  return `<span class="pres off"><span class="dot" style="background:#F59E0B"></span>จอแผนกไม่ได้เปิด${last} — ควรโทรแจ้งแผนกด้วย</span>`;
 }
 
 function subscribeCases() {
@@ -717,6 +789,10 @@ function subscribeCases() {
     const d = S.profile.dept;
     qOpen = query(base, where('deptId', '==', d), where('status', 'in', OPEN));
     qToday = query(base, where('deptId', '==', d), where('day', '==', S.day));
+    if (S.profile.canSend) {
+      S.caseUnsubs.push(onSnapshot(query(base, where('createdByUid', '==', S.user.uid), where('day', '==', S.day)),
+        (snap) => { S.sent = [...toMap(snap).values()]; render(); }, showSysError));
+    }
   } else {
     qOpen = query(base, where('status', 'in', OPEN));
     qToday = query(base, where('day', '==', S.day));
@@ -729,7 +805,7 @@ function toMap(snap) {
   const m = new Map();
   snap.docs.forEach((d) => {
     const x = d.data({ serverTimestamps: 'estimate' });
-    m.set(d.id, { id: d.id, ...x, createdMs: tms(x.createdAt), ackMs: tms(x.ackAt), closedMs: tms(x.closedAt), callMs: tms(x.firstCallAt) });
+    m.set(d.id, { id: d.id, ...x, createdMs: tms(x.createdAt), ackMs: tms(x.ackAt), closedMs: tms(x.closedAt), callMs: tms(x.firstCallAt), reportMs: tms(x.reportAt) });
   });
   return m;
 }
@@ -750,6 +826,7 @@ function onDeptsChanged() {
     const s = $('#dept-sub'); if (s) s.textContent = d ? `ต่อ ${d.ext || '-'} · ${d.building || '-'}` : '';
   }
   if (S.view === 'admin') paintAdminDepts();
+  if (S.view === 'dept' && S.deptTab === 'send') loadPresenceTable(null);
   render();
 }
 
@@ -788,6 +865,7 @@ function tick() {
   });
   if (dayKey() !== S.day) subscribeCases();
   if (escKeyNow(now) !== S.escKey) render();
+  if (LINE_ALERT_URL && S.profile.role !== 'dept') checkLineAlerts(now);
   paintNet();
   if (S.profile.role === 'dept') {
     paintSound();
@@ -899,11 +977,26 @@ function renderShell() {
         </section>
       </div></main>`;
   } else if (S.view === 'dept') {
+    const send = !!S.profile.canSend;
+    const onSend = send && S.deptTab === 'send';
     body = `<div id="alarm"></div><main class="wrap main">
+      ${send ? `<div class="tabs" role="tablist" aria-label="มุมมอง">
+        <button type="button" role="tab" class="tab ${onSend ? '' : 'on'}" aria-selected="${!onSend}" data-act="dtab" data-v="in">คนไข้ที่ต้องโทรกลับ<span class="n" id="n-in">0</span></button>
+        <button type="button" role="tab" class="tab ${onSend ? 'on' : ''}" aria-selected="${onSend}" data-act="dtab" data-v="send">ส่งข้อมูลให้แผนกอื่น<span class="n" id="n-sent">0</span></button>
+      </div>` : ''}
+      ${onSend ? `<div class="layout">
+        <section class="glass card form-card" aria-labelledby="form-title">${formHtml()}</section>
+        <section class="stack" style="min-width:0"><h2 class="h2">เคสที่ส่งวันนี้</h2><div id="sent-list"></div>
+          <div class="glass card stack-sm">
+            <div class="board-head"><div><h2 class="h2" style="font-size:18px">สถานะหน้าจอแผนก</h2><p class="sub">แผนกที่จอไม่ได้เปิดจะไม่ได้ยินเสียงเตือน ควรโทรแจ้งด้วย</p></div>
+              <button type="button" class="btn btn-light sm" data-act="presence-load">ตรวจสอบตอนนี้</button></div>
+            <div id="presence-body"></div>
+          </div></section>
+      </div>` : `
       <div id="dstats" class="dstats"></div>
-      <h2 class="h2">คนไข้ที่ต้องโทรกลับ</h2>
+      ${send ? '' : '<h2 class="h2">คนไข้ที่ต้องโทรกลับ</h2>'}
       <div id="dlist"></div>
-      <div id="dclosed" class="stack-sm"></div></main>`;
+      <div id="dclosed" class="stack-sm"></div>`}</main>`;
   } else if (S.view === 'stats') {
     body = `<main class="wrap main" id="stats-area"></main>`;
   } else if (S.view === 'admin') {
@@ -916,7 +1009,7 @@ function renderShell() {
     <div class="status" id="net"></div>
     ${isDept ? '<div class="status" id="sound"></div>' : ''}
     <div class="clock" id="clock">${hms(Date.now())}</div>
-    <div class="userchip"><span class="avatar">${isDept ? ICON.building : (p.role === 'admin' ? ICON.shield : ICON.headset)}</span><span>${isDept ? 'บัญชีแผนก' : name}</span></div>
+    <div class="userchip"><span class="avatar">${isDept ? ICON.building : (p.role === 'admin' ? ICON.shield : ICON.headset)}</span><span>${isDept ? (p.canSend ? 'บัญชีแผนก · ส่งเคสได้' : 'บัญชีแผนก') : name}</span></div>
     <button type="button" class="linkbtn" data-act="chg-pw">เปลี่ยนรหัสผ่าน</button>
     <button type="button" class="linkbtn" data-act="logout">ออกจากระบบ</button>
   </div></header>
@@ -927,7 +1020,8 @@ function renderShell() {
   paintNet(); paintSound();
   fillDeptSelects();
   if (S.profile.role === 'dept') onDeptsChanged();
-  if (S.view === 'board') paintFormChips();
+  if (S.view === 'board' || (S.view === 'dept' && S.deptTab === 'send')) paintFormChips();
+  if (S.view === 'dept' && S.deptTab === 'send') loadPresenceTable(null);
   if (S.view === 'stats') loadStats();
   if (S.view === 'admin') loadAdmin();
   render();
@@ -939,7 +1033,7 @@ function formHtml() {
   <div><h2 id="form-title" class="h2">ข้อมูลติดต่อกลับ</h2>
     <p class="sub2" style="font-size:14px">กรอกเมื่อโอนสายแล้วแผนกไม่รับ หน้าจอแผนกจะมีเสียงเตือนทันที</p></div>
   <form id="case-form" class="stack" novalidate>
-    <div class="field"><label for="f-dept">แผนกที่ต้องโทรกลับ *</label><select id="f-dept" name="dept" class="input"></select><div id="f-dept-info" class="hint"></div></div>
+    <div class="field"><label for="f-dept">แผนกที่ต้องโทรกลับ *</label><select id="f-dept" name="dept" class="input"></select><div id="f-dept-info" class="hint"></div><div id="f-dept-pres"></div></div>
     <div class="field"><label for="f-name">ชื่อ-นามสกุลคนไข้ *</label><input id="f-name" name="pname" class="input" maxlength="100" placeholder="เช่น คุณสมศรี ใจดี" autocomplete="off"></div>
     <div class="two">
       <div class="field"><label for="f-phone">เบอร์โทรกลับ *</label><input id="f-phone" name="phone" type="tel" class="input mono" maxlength="20" placeholder="08x-xxx-xxxx" autocomplete="off"></div>
@@ -971,6 +1065,14 @@ function paintFormChips() {
   });
 }
 
+async function paintPresence() {
+  const sel = $('#f-dept'); const el = $('#f-dept-pres');
+  if (!sel || !el) return;
+  if (!sel.value) { el.innerHTML = ''; return; }
+  const id = sel.value;
+  const p = await getPresence(id);
+  if ($('#f-dept') && $('#f-dept').value === id) el.innerHTML = presenceText(p);
+}
 function paintDeptInfo() {
   const el = $('#f-dept-info'); const sel = $('#f-dept');
   if (!el || !sel) return;
@@ -997,6 +1099,7 @@ async function submitCase(form) {
     topic: S.form.topic || 'อื่นๆ', urgent: S.form.urgent,
     status: 'pending', day, attempts: 0, masked: false,
     createdAt: serverTimestamp(), createdByUid: S.user.uid,
+    senderDeptName: S.profile.role === 'dept' ? ((S.deptMap[S.profile.dept] || {}).name || '') : '',
     createdByName: S.profile.displayName || S.profile.username || ''
   });
   batch.set(doc(db, 'stats', day), {
@@ -1011,7 +1114,10 @@ async function submitCase(form) {
     form.reset();
     S.form = { topic: '', urgent: false };
     paintFormChips(); paintDeptInfo();
-    box.innerHTML = msgHtml('ok', `ส่งถึง ${esc(d.name)} แล้ว — หน้าจอแผนกกำลังส่งเสียงเตือน`);
+    const pr = await getPresence(deptId);
+    box.innerHTML = isOnline(pr)
+      ? msgHtml('ok', `ส่งถึง ${esc(d.name)} แล้ว — หน้าจอแผนกกำลังส่งเสียงเตือน`)
+      : msgHtml('error', `บันทึกแล้ว แต่<b>จอ ${esc(d.name)} ไม่ได้เปิด</b> แผนกจะไม่ได้ยินเสียง — กรุณาโทรแจ้งต่อ ${esc(d.ext || '')}`);
     setTimeout(() => { if (box.querySelector('.ok')) box.innerHTML = ''; }, 5000);
     form.pname.focus();
   } catch (err) {
@@ -1097,7 +1203,7 @@ function patientBox(c) {
   return `<div class="patient">
       <div class="pname">${esc(c.patientName)}${c.urgent ? '<span class="urgent">ด่วน</span>' : ''}</div>
       <div class="pphone">${ICON.phoneSm}<span>${esc(fmtPhone(c.phone))}</span></div>
-      <div class="tags"><span class="tag-topic">${esc(c.topic)}</span>${c.hn ? `<span class="tag-topic">HN ${esc(c.hn)}</span>` : ''}${c.attempts ? `<span class="tag-warn">โทรไม่ติด ${c.attempts} ครั้ง</span>` : ''}</div>
+      <div class="tags"><span class="tag-topic">${esc(c.topic)}</span>${c.hn ? `<span class="tag-topic">HN ${esc(c.hn)}</span>` : ''}${c.attempts ? `<span class="tag-warn">โทรไม่ติด ${c.attempts} ครั้ง</span>` : ''}${c.reportType ? `<span class="tag-warn">รายงาน: ${esc(REPORT_TYPES[c.reportType] || c.reportType)}</span>` : ''}</div>
       ${c.note ? `<div class="pnote">${esc(c.note)}</div>` : ''}
     </div>`;
 }
@@ -1133,28 +1239,33 @@ function opCard(c) {
 }
 
 /* ---------- department ---------- */
+function renderSent() {
+  const box = $('#sent-list');
+  const nIn = $('#n-in'); if (nIn) nIn.textContent = S.cases.filter((c) => OPEN.includes(c.status)).length;
+  const nS = $('#n-sent'); if (nS) nS.textContent = S.sent.length;
+  if (!box) return;
+  const now = Date.now();
+  const rank = (c) => (c.status === 'pending' ? 0 : c.status === 'ack' ? 1 : 2);
+  const list = S.sent.map((c) => view(c, now)).sort((a, b) => rank(a) - rank(b) || b.created - a.created);
+  box.innerHTML = list.length ? `<div class="cards">${list.map(opCard).join('')}</div>` : '<div class="empty">วันนี้ยังไม่ได้ส่งเคสให้แผนกอื่น</div>';
+}
+
 function renderDept() {
-  const listBox = $('#dlist'); if (!listBox) return;
+  if (S.profile && S.profile.canSend) renderSent();
+  const listBox = $('#dlist');
+  if (!listBox) { renderDeptAlarm(); return; }
   const now = Date.now();
   const today = dayKey();
   const all = S.cases.map((c) => view(c, now));
   const pending = all.filter((c) => c.status === 'pending');
-  const open = all.filter((c) => OPEN.includes(c.status)).sort((a, b) => {
+  const open = all.filter((c) => c.status === 'pending' || c.status === 'ack').sort((a, b) => {
     if ((a.status === 'pending') !== (b.status === 'pending')) return a.status === 'pending' ? -1 : 1;
     if (!!a.urgent !== !!b.urgent) return a.urgent ? -1 : 1;
     return a.created - b.created;
   });
-  const closed = all.filter((c) => CLOSED.includes(c.status)).sort((a, b) => (b.closedMs || 0) - (a.closedMs || 0));
+  const closed = all.filter((c) => CLOSED.includes(c.status) && c.status !== 'cancelled').sort((a, b) => (b.closedMs || 0) - (a.closedMs || 0));
 
-  const oldest = pending.length ? Math.min(...pending.map((c) => c.created)) : now;
-  const mood = dooMoodFor(now - oldest);
-  S.dooMood = pending.length ? mood : (open.length ? 'happy' : 'sleep');
-  $('#alarm').innerHTML = pending.length ? `<div class="alarm" role="alert"><div class="wrap alarm-in">
-      ${SHOW_DOO ? `<div class="doo-bubble">${dooSvg(mood, 78)}</div>` : ICON.bellBig}
-      <div style="flex:1;min-width:240px"><div class="alarm-t">มีคนไข้รอให้โทรกลับ ${pending.length} ราย</div>
-        <div class="alarm-s">${SHOW_DOO ? `น้องกริ๊งกริ๊ง: “${DOO_TEXT[mood]}”` : 'เสียงจะดังจนกว่าจะมีผู้กดรับเรื่อง'}</div></div>
-      <button type="button" class="btn btn-light btn-xl" style="color:var(--red-d);border:none" data-act="ack-all">รับเรื่องทั้งหมด</button>
-    </div></div>` : (SHOW_DOO ? calmBar(open.length) : '');
+  renderDeptAlarm(all, pending, open, now);
 
   const todays = all.filter((c) => c.day === today);
   const acked = todays.filter((c) => typeof c.ackSeconds === 'number');
@@ -1178,7 +1289,7 @@ function renderDept() {
       <div class="closed-row"><span class="muted" style="font-weight:600">${c.closedMs ? hm(c.closedMs) : '-'}</span>
         <span style="font-weight:600;flex:1">${esc(c.patientName)}</span>
         <span class="muted">${esc(c.topic)}</span>
-        <span class="pill st-${esc(c.status)}">${SHORT[c.status] || ''}</span></div>`).join('')}</div>` : ''}`;
+        <span class="pill st-${esc(c.status)}">${SHORT[c.status] || ''}</span>${reportBtn(c)}</div>`).join('')}</div>` : ''}`;
 }
 
 function deptCard(c, now) {
@@ -1204,7 +1315,10 @@ function deptCard(c, now) {
           </div>
           <button type="button" class="btn btn-glass" data-act="fail" data-id="${esc(c.id)}">${ICON.x} ปิดเคส: ติดต่อไม่ได้</button>
         </div>`}
-    <div class="sub">ฝาก ${hm(c.created)} · ${esc(shortName(c.createdByName))}</div>
+    <div class="row-w" style="justify-content:space-between">
+      <span class="sub">ฝาก ${hm(c.created)} · ${esc(shortName(c.createdByName))}</span>
+      ${pending ? '' : reportBtn(c)}
+    </div>
   </article>`;
 }
 
@@ -1274,6 +1388,61 @@ async function recordAttempt(id) {
     tx.update(ref, upd);
     return true;
   });
+}
+
+const REPORT_TYPES = { misroute: 'ส่งผิดแผนก', info: 'ข้อมูลคนไข้ไม่ถูกต้อง', other: 'อื่นๆ' };
+function reportBtn(c) {
+  if (c.reportType) return `<span class="tag-warn" title="${esc(c.reportNote || '')}">รายงานแล้ว: ${esc(REPORT_TYPES[c.reportType] || '')}</span>`;
+  return `<button type="button" class="xbtn mis-btn" data-act="report" data-id="${esc(c.id)}">${ICON.flag} รายงาน</button>`;
+}
+
+function openReport(id) {
+  const c = S.cases.find((x) => x.id === id); if (!c) return;
+  const opts = S.depts.filter((d) => d.active !== false && d.id !== c.deptId)
+    .map((d) => `<option value="${esc(d.id)}">${esc(d.name)}</option>`).join('');
+  S.dialog = { type: 'report', target: id };
+  $('#dialog').innerHTML = `<div class="overlay">
+    <form id="report-form" class="dialog" role="dialog" aria-modal="true" aria-labelledby="rp-t" novalidate>
+      <div><h2 id="rp-t" class="h2">รายงานเคสนี้</h2><p class="sub2">คนไข้: ${esc(c.patientName)} · ${esc(c.topic)}<br>เก็บเป็นข้อมูลเพื่อปรับปรุงการส่งเรื่อง ไม่เปลี่ยนสถานะเคส</p></div>
+      <fieldset class="field" style="border:none;margin:0;padding:0"><legend class="lbl" style="margin-bottom:6px">เรื่องที่รายงาน</legend>
+        <div class="chips">${Object.entries(REPORT_TYPES).map(([k, v], i) => `<label class="chip rp-chip"><input type="radio" name="type" value="${k}" ${i === 0 ? 'checked' : ''}> ${v}</label>`).join('')}</div></fieldset>
+      <div class="field" id="rp-to-f"><label for="rp-to">แผนกที่ถูกต้อง (ถ้าทราบ)</label>
+        <select id="rp-to" name="to" class="input"><option value="">ไม่ระบุ</option>${opts}</select></div>
+      <div class="field"><label for="rp-note">รายละเอียด (ถ้ามี)</label>
+        <input id="rp-note" name="note" class="input" maxlength="150" placeholder="เช่น คนไข้ต้องการนัดคลินิกหัวใจ โอนต่อให้แล้ว" autocomplete="off"></div>
+      <div class="field"><label for="rp-emp">รหัสพนักงาน (ID)</label>
+        <input id="rp-emp" name="emp" class="input emp" inputmode="numeric" autocomplete="off" maxlength="12" placeholder="เช่น 10234"></div>
+      <div id="rp-msg"></div>
+      <div class="dlg-btns"><button type="button" class="btn btn-light" data-act="dlg-close">ยกเลิก</button>
+        <button type="submit" class="btn btn-primary">ส่งรายงาน</button></div>
+    </form></div>`;
+}
+
+async function submitReport(form) {
+  const box = $('#rp-msg');
+  const emp = form.emp.value.trim();
+  if (!/^[A-Za-z0-9]{3,12}$/.test(emp)) { box.innerHTML = msgHtml('error', 'กรุณากรอกรหัสพนักงานให้ถูกต้อง'); form.emp.focus(); return; }
+  const type = (form.querySelector('input[name=type]:checked') || {}).value || 'other';
+  const to = type === 'misroute' ? form.to.value : '';
+  const toName = to && S.deptMap[to] ? S.deptMap[to].name : '';
+  const note = form.note.value.trim();
+  const ref = doc(db, 'cases', S.dialog && S.dialog.target);
+  const btn = form.querySelector('button[type=submit]');
+  btn.disabled = true;
+  try {
+    const ok = await runTransaction(db, async (tx) => {
+      const snap = await tx.get(ref);
+      if (!snap.exists()) return false;
+      const c = snap.data();
+      if (c.reportType || c.status === 'cancelled') return false;
+      tx.update(ref, { reportType: type, reportTo: to, reportToName: toName, reportNote: note,
+        reportEmpId: emp, reportByUid: S.user.uid, reportAt: serverTimestamp() });
+      tx.set(doc(db, 'stats', c.day), { depts: { [c.deptId]: { [type === 'misroute' ? 'misrouted' : 'reportOther']: increment(1) } } }, { merge: true });
+      return true;
+    });
+    closeDialog();
+    toast(ok ? 'ok' : 'error', ok ? 'บันทึกรายงานแล้ว ขอบคุณค่ะ' : 'เคสนี้มีการรายงานไปแล้ว');
+  } catch (err) { box.innerHTML = msgHtml('error', thaiErr(err)); btn.disabled = false; }
 }
 
 function openAck(target) {
@@ -1386,13 +1555,13 @@ async function loadStats() {
 
 function renderStats(docs) {
   const body = $('#stats-body'); if (!body) return;
-  const KEYS = ['cases', 'ackCount', 'ackSum', 'late', 'done', 'fail', 'wrong', 'cancelled', 'callCount', 'callSum', 'resolveCount', 'resolveSum'];
+  const KEYS = ['cases', 'ackCount', 'ackSum', 'late', 'done', 'fail', 'wrong', 'cancelled', 'callCount', 'callSum', 'resolveCount', 'resolveSum', 'misrouted', 'reportOther'];
   const depts = {};
   const hours = Array(24).fill(0);
   docs.forEach((s) => {
     Object.entries(s.hours || {}).forEach(([h, n]) => { const i = +h; if (i >= 0 && i < 24) hours[i] += n || 0; });
     Object.entries(s.depts || {}).forEach(([id, v]) => {
-      const t = depts[id] || (depts[id] = { id, name: '', cases: 0, ackCount: 0, ackSum: 0, late: 0, done: 0, fail: 0, wrong: 0, cancelled: 0, callCount: 0, callSum: 0, resolveCount: 0, resolveSum: 0 });
+      const t = depts[id] || (depts[id] = { id, name: '', cases: 0, ackCount: 0, ackSum: 0, late: 0, done: 0, fail: 0, wrong: 0, cancelled: 0, callCount: 0, callSum: 0, resolveCount: 0, resolveSum: 0, misrouted: 0, reportOther: 0 });
       KEYS.forEach((k) => { t[k] += v[k] || 0; });
       t.name = (S.deptMap[id] && S.deptMap[id].name) || v.name || t.name || id;
     });
@@ -1447,6 +1616,9 @@ function renderStats(docs) {
         <h2 class="h2" style="font-size:18px">ผลการโทรกลับ</h2>
         <div class="stackbar">${[[done, 'var(--green)'], [fail, '#E8A33D'], [wrong, '#8C99A6'], [openN, '#C7D7F0']]
           .map(([n, c]) => (n ? `<div style="width:${(n / total) * 100}%;background:${c}"></div>` : '')).join('')}</div>
+        ${(() => { const ms = Object.values(depts).filter((r) => r.misrouted).sort((a, b) => b.misrouted - a.misrouted);
+          const n = ms.reduce((t, r) => t + r.misrouted, 0);
+          return n ? `<div class="mis-sum"><b>แผนกรายงานว่าส่งผิดแผนก ${n} เคส</b><span class="sub">${ms.slice(0, 5).map((r) => `${esc(r.name)} ${r.misrouted}`).join(' · ')}</span></div>` : ''; })()}
         ${[['โทรกลับสำเร็จ', done, 'var(--green)'], ['ติดต่อคนไข้ไม่ได้', fail, '#E8A33D'], ['เบอร์ไม่ถูกต้อง', wrong, '#8C99A6'], ['ยังไม่ปิดเคส', openN, '#C7D7F0']]
           .map(([l, n, c]) => `<div class="legend"><span class="sw" style="background:${c}"></span><span style="flex:1">${l}</span>
             <span class="mono" style="font-weight:600">${n}</span><span class="mono muted" style="width:52px;text-align:right">${pct(n, total)}%</span></div>`).join('')}
@@ -1540,13 +1712,13 @@ async function exportCSV(btn) {
     const fmt = (t) => { const ms = tms(t); return ms ? hms(ms) : ''; };
     const mins = (sec) => (typeof sec === 'number' ? (sec / 60).toFixed(1) : '');
     const header = ['วันที่', 'เวลาฝาก', 'แผนก', 'ชื่อคนไข้', 'เบอร์โทร', 'HN', 'เรื่อง', 'รายละเอียด', 'ด่วน', 'สถานะ', 'Operator',
-      'เวลารับเรื่อง', 'ID ผู้รับเรื่อง', 'นาทีถึงรับเรื่อง', 'เวลาโทรครั้งแรก', 'นาทีรับเรื่อง→โทร', 'โทรไม่ติด (ครั้ง)', 'เวลาปิดเคส', 'นาทีรับเรื่อง→ปิดเคส'];
+      'เวลารับเรื่อง', 'ID ผู้รับเรื่อง', 'นาทีถึงรับเรื่อง', 'เวลาโทรครั้งแรก', 'นาทีรับเรื่อง→โทร', 'โทรไม่ติด (ครั้ง)', 'เวลาปิดเคส', 'นาทีรับเรื่อง→ปิดเคส', 'รายงาน: เรื่อง', 'รายงาน: แผนกที่ถูก', 'รายงาน: รายละเอียด', 'รายงานโดย ID', 'ส่งโดยแผนก'];
     const lines = [header].concat(rows.map((c) => [
       c.day, fmt(c.createdAt), (S.deptMap[c.deptId] && S.deptMap[c.deptId].name) || c.deptName, c.patientName, c.phone, c.hn,
       c.topic, c.note, c.urgent ? 'ด่วน' : '', STATUS[c.status] || c.status, c.createdByName,
       fmt(c.ackAt), c.ackEmpId || '', mins(c.ackSeconds),
       fmt(c.firstCallAt), mins(c.callSeconds),
-      c.attempts || 0, fmt(c.closedAt), mins(c.resolveSeconds)
+      c.attempts || 0, fmt(c.closedAt), mins(c.resolveSeconds), REPORT_TYPES[c.reportType] || '', c.reportToName || '', c.reportNote || '', c.reportEmpId || '', c.senderDeptName || ''
     ]));
     const cell = (v) => {
       let s = String(v ?? '');
@@ -1591,12 +1763,19 @@ function loadAdmin() {
       <div class="field"><label for="u-disp">ชื่อที่แสดง</label><input id="u-disp" name="displayName" class="input" maxlength="60" placeholder="เช่น Operator 01"></div>
       <div class="field"><label for="u-role">บทบาท</label><select id="u-role" name="role" class="input">
         <option value="dept">แผนก</option><option value="operator">Operator</option><option value="admin">ผู้ดูแลระบบ</option></select></div>
-      <div class="field" id="u-dept-field"><label for="u-dept">แผนก</label><select id="u-dept" name="dept" class="input"></select></div>
+      <div class="field" id="u-dept-field"><label for="u-dept">แผนก</label><select id="u-dept" name="dept" class="input"></select>
+        <label class="rp-chip" style="font-size:14px;margin-top:4px"><input type="checkbox" name="canSend"> ส่งเคสให้แผนกอื่นได้ (เช่น TELEMEDICINE)</label></div>
       <div class="field"><label for="u-pass">รหัสผ่านเริ่มต้น (8 ตัวขึ้นไป)</label><input id="u-pass" name="password" type="text" class="input mono" maxlength="64" autocomplete="off"></div>
       <div><button class="btn btn-primary" type="submit">สร้างบัญชี</button></div>
     </form>
     <div id="user-msg"></div>
     <div class="tbl-wrap"><table><thead><tr><th>ชื่อผู้ใช้</th><th>ชื่อที่แสดง</th><th>บทบาท</th><th>แผนก</th><th>สถานะ</th><th></th></tr></thead><tbody id="user-rows"><tr><td colspan="6" class="muted">กำลังโหลด…</td></tr></tbody></table></div>
+  </section>
+
+  <section class="glass card stack-sm">
+    <div class="board-head"><div><h2 class="h2">สถานะหน้าจอแผนก</h2><p class="sub">ดูว่าแผนกไหนเปิดหน้าจอ DOOCALL ไว้ (หน้าแผนกส่งสัญญาณทุก ${PRESENCE_EVERY_MIN} นาที)</p></div>
+      <button type="button" class="btn btn-light sm" data-act="presence-load">ตรวจสอบตอนนี้</button></div>
+    <div id="presence-body"></div>
   </section>
 
   <section class="glass card stack-sm">
@@ -1608,6 +1787,55 @@ function loadAdmin() {
   fillDeptSelects();
   paintAdminDepts();
   loadUsers();
+}
+
+/* ---------- LINE alert to department heads ---------- */
+function checkLineAlerts(now) {
+  const esc = S.cases.filter((c) => c.status === 'pending' && !c.lineNotifiedAt
+    && now - (c.createdMs ?? now) >= ESCALATE_MIN * 60000 && !S.lineTried.has(c.id));
+  esc.forEach((c) => { S.lineTried.add(c.id); sendLineAlert(c.id).catch((e) => console.warn('LINE alert', e)); });
+}
+
+async function sendLineAlert(id) {
+  const ref = doc(db, 'cases', id);
+  // กันส่งซ้ำ: Operator หลายเครื่องเปิดพร้อมกัน ส่งได้เครื่องเดียว
+  const info = await runTransaction(db, async (tx) => {
+    const snap = await tx.get(ref);
+    if (!snap.exists()) return null;
+    const c = snap.data();
+    if (c.status !== 'pending' || c.lineNotifiedAt) return null;
+    tx.update(ref, { lineNotifiedAt: serverTimestamp() });
+    return c;
+  });
+  if (!info) return;
+  const d = S.deptMap[info.deptId] || {};
+  const waiting = S.cases.filter((x) => x.deptId === info.deptId && x.status === 'pending').length;
+  const payload = {
+    type: 'escalate', key: LINE_ALERT_KEY,
+    deptName: d.name || info.deptName || '', ext: d.ext || '',
+    waitMin: Math.round((Date.now() - (tms(info.createdAt) || Date.now())) / 60000),
+    waiting, appUrl: location.origin + location.pathname
+  };
+  // ไม่ส่งชื่อ/เบอร์คนไข้ไปที่ LINE (PDPA)
+  await fetch(LINE_ALERT_URL, { method: 'POST', mode: 'no-cors', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify(payload) });
+}
+
+async function loadPresenceTable(btn) {
+  const box = $('#presence-body'); if (!box) return;
+  if (btn) btn.disabled = true;
+  try {
+    const snap = await getDocs(collection(db, 'presence'));
+    const map = {};
+    snap.docs.forEach((d) => { map[d.id] = tms(d.data().at); });
+    const rows = S.depts.filter((d) => d.active !== false).map((d) => ({ d, at: map[d.id] || null }))
+      .sort((a, b) => (isOnline(a) === isOnline(b) ? a.d.order - b.d.order : isOnline(a) ? 1 : -1));
+    const on = rows.filter((r) => isOnline(r)).length;
+    box.innerHTML = `<div class="sub">เปิดอยู่ ${on} จาก ${rows.length} แผนก · ตรวจเมื่อ ${hms(Date.now())}</div>
+      <div class="pres-grid">${rows.map((r) => `<div class="pres-item ${isOnline(r) ? 'on' : 'off'}"><span class="dot" style="background:${isOnline(r) ? '#16A34A' : '#F59E0B'}"></span>
+        <span style="flex:1;font-weight:600">${esc(r.d.name)}</span>
+        <span class="sub">${isOnline(r) ? 'เปิดอยู่' : r.at ? `ล่าสุด ${new Date(r.at).toLocaleDateString('th-TH', { day: 'numeric', month: 'short' })} ${hm(r.at)}` : 'ยังไม่เคยเปิด'}</span></div>`).join('')}</div>`;
+  } catch (err) { box.innerHTML = msgHtml('error', thaiErr(err)); }
+  finally { if (btn) btn.disabled = false; }
 }
 
 function paintAdminDepts() {
@@ -1667,7 +1895,8 @@ async function loadUsers() {
       .sort((a, b) => (a.role || '').localeCompare(b.role || '') || (a.username || '').localeCompare(b.username || ''));
     rows.innerHTML = users.map((u) => `<tr>
       <td class="mono">${esc(u.username || '')}</td><td>${esc(u.displayName || '')}</td><td>${ROLE[u.role] || esc(u.role)}</td>
-      <td>${u.dept ? esc((S.deptMap[u.dept] && S.deptMap[u.dept].name) || u.dept) : '-'}</td>
+      <td>${u.dept ? esc((S.deptMap[u.dept] && S.deptMap[u.dept].name) || u.dept) : '-'}
+        ${u.role === 'dept' && u.uid !== S.user.uid ? `<br><button type="button" class="linkbtn" style="min-height:32px;font-size:13px" data-act="toggle-send" data-id="${esc(u.uid)}" data-on="${u.canSend ? '1' : '0'}">${u.canSend ? '✓ ส่งเคสได้ · ปิดสิทธิ์' : 'ให้สิทธิ์ส่งเคส'}</button>` : ''}</td>
       <td><span class="tag ${u.active ? 'on' : 'off'}">${u.active ? 'ใช้งาน' : 'ปิดใช้งาน'}</span></td>
       <td>${u.uid === S.user.uid ? '<span class="sub">บัญชีของคุณ</span>'
         : `<button type="button" class="linkbtn" data-act="toggle-user" data-id="${esc(u.uid)}" data-on="${u.active ? '1' : '0'}">${u.active ? 'ปิดใช้งาน' : 'เปิดใช้งาน'}</button>`}</td></tr>`).join('')
@@ -1687,6 +1916,7 @@ async function submitUser(form) {
   const displayName = form.displayName.value.trim();
   const role = form.role.value;
   const dept = role === 'dept' ? form.dept.value : null;
+  const canSend = role === 'dept' && form.canSend.checked;
   const password = form.password.value;
   if (!/^[a-z0-9._-]{3,30}$/.test(username)) { box.innerHTML = msgHtml('error', 'ชื่อผู้ใช้ใช้ได้เฉพาะ a-z, 0-9, จุด, ขีด และยาว 3–30 ตัว'); return; }
   if (role === 'dept' && !dept) { box.innerHTML = msgHtml('error', 'กรุณาเลือกแผนกของบัญชีนี้'); return; }
@@ -1697,7 +1927,7 @@ async function submitUser(form) {
     const a = getSecondaryAuth();
     const cred = await createUserWithEmailAndPassword(a, toEmail(username), password);
     await setDoc(doc(db, 'users', cred.user.uid), {
-      username, displayName: displayName || username, role, dept, active: true, createdAt: serverTimestamp()
+      username, displayName: displayName || username, role, dept, canSend, active: true, createdAt: serverTimestamp()
     });
     await signOut(a);
     box.innerHTML = msgHtml('ok', `สร้างบัญชี <b>${esc(username)}</b> แล้ว`);
@@ -1758,12 +1988,15 @@ document.addEventListener('click', async (e) => {
       break;
     case 'ack': openAck(id); break;
     case 'ack-all': openAck('all'); break;
+    case 'report': openReport(id); break;
+    case 'dtab': S.deptTab = el.dataset.v; renderShell(); break;
+    case 'presence-load': await loadPresenceTable(el); break;
     case 'retry': await guard(recordAttempt(id), 'บันทึกว่าโทรไม่ติดแล้ว'); break;
     case 'done': el.disabled = true; await guard(closeCase(id, 'done'), 'ปิดเคส: โทรกลับสำเร็จ'); break;
     case 'fail': if (confirm('ปิดเคสนี้เป็น "ติดต่อคนไข้ไม่ได้"?')) await guard(closeCase(id, 'fail'), 'ปิดเคสแล้ว'); break;
     case 'wrong': if (confirm('ปิดเคสนี้เป็น "เบอร์ไม่ถูกต้อง"?')) await guard(closeCase(id, 'wrong'), 'ปิดเคสแล้ว'); break;
     case 'toggle-closed': S.showClosed = !S.showClosed; renderDept(); break;
-    case 'toggle-tl': if (S.expanded.has(id)) S.expanded.delete(id); else S.expanded.add(id); renderBoard(); break;
+    case 'toggle-tl': if (S.expanded.has(id)) S.expanded.delete(id); else S.expanded.add(id); render(); break;
     case 'staff-load': await loadStaff(el); break;
     case 'staff-export': exportStaff(); break;
     case 'range': S.statsRange = el.dataset.v; loadStats(); break;
@@ -1776,6 +2009,9 @@ document.addEventListener('click', async (e) => {
       if (d) await guard(updateDoc(doc(db, 'departments', id), { active: d.active === false }));
       break;
     }
+    case 'toggle-send':
+      if (await guard(updateDoc(doc(db, 'users', id), { canSend: el.dataset.on !== '1' }), 'บันทึกแล้ว — ให้บัญชีนั้นออกจากระบบแล้วเข้าใหม่')) loadUsers();
+      break;
     case 'toggle-user':
       if (await guard(updateDoc(doc(db, 'users', id), { active: el.dataset.on !== '1' }), 'บันทึกแล้ว')) loadUsers();
       break;
@@ -1787,7 +2023,7 @@ document.addEventListener('click', async (e) => {
 document.addEventListener('submit', (e) => {
   const f = e.target;
   const handlers = {
-    'login-form': doLogin, 'case-form': submitCase, 'ack-form': submitAck, 'pw-form': submitPw,
+    'login-form': doLogin, 'case-form': submitCase, 'ack-form': submitAck, 'report-form': submitReport, 'pw-form': submitPw,
     'dept-form': submitDept, 'user-form': submitUser,
     'range-form': (form) => {
       const from = form.from.value, to = form.to.value;
@@ -1799,9 +2035,10 @@ document.addEventListener('submit', (e) => {
 });
 
 document.addEventListener('change', (e) => {
-  if (e.target.id === 'f-dept') paintDeptInfo();
+  if (e.target.id === 'f-dept') { paintDeptInfo(); paintPresence(); }
   if (e.target.id === 'f-filter') { S.deptFilter = e.target.value; renderBoard(); }
   if (e.target.id === 'u-role') toggleUserDept();
+  if (e.target.name === 'type' && e.target.closest('#report-form')) { const f = $('#rp-to-f'); if (f) f.style.display = e.target.value === 'misroute' ? '' : 'none'; }
 });
 
 document.addEventListener('keydown', (e) => {
@@ -1811,7 +2048,7 @@ document.addEventListener('keydown', (e) => {
     e.preventDefault();
     const id = card.dataset.id;
     if (S.expanded.has(id)) S.expanded.delete(id); else S.expanded.add(id);
-    renderBoard();
+    render();
     const again = document.querySelector(`.case.clickable[data-id="${CSS.escape(id)}"]`);
     if (again) again.focus();
   }
