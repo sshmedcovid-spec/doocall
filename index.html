@@ -1111,11 +1111,14 @@ async function submitCase(form) {
   btn.disabled = true; box.innerHTML = '';
   try {
     await batch.commit();
+    if (d.instantLine) notifyNewCase(d);
     form.reset();
     S.form = { topic: '', urgent: false };
     paintFormChips(); paintDeptInfo();
     const pr = await getPresence(deptId);
-    box.innerHTML = isOnline(pr)
+    box.innerHTML = d.instantLine
+      ? msgHtml('ok', `ส่งถึง ${esc(d.name)} แล้ว — แจ้งทาง LINE ให้แผนกทันที`)
+      : isOnline(pr)
       ? msgHtml('ok', `ส่งถึง ${esc(d.name)} แล้ว — หน้าจอแผนกกำลังส่งเสียงเตือน`)
       : msgHtml('error', `บันทึกแล้ว แต่<b>จอ ${esc(d.name)} ไม่ได้เปิด</b> แผนกจะไม่ได้ยินเสียง — กรุณาโทรแจ้งต่อ ${esc(d.ext || '')}`);
     setTimeout(() => { if (box.querySelector('.ok')) box.innerHTML = ''; }, 5000);
@@ -1753,7 +1756,7 @@ function loadAdmin() {
         <button class="btn btn-light" type="button" data-act="dept-reset">ล้าง</button></div>
     </form>
     <div id="dept-msg"></div>
-    <div class="tbl-wrap"><table><thead><tr><th>ลำดับ</th><th>แผนก</th><th>เบอร์ภายใน</th><th>อาคาร</th><th>สถานะ</th><th></th></tr></thead><tbody id="dept-rows"></tbody></table></div>
+    <div class="tbl-wrap"><table><thead><tr><th>ลำดับ</th><th>แผนก</th><th>เบอร์ภายใน</th><th>อาคาร</th><th>สถานะ</th><th>แจ้ง LINE ทันที</th><th></th></tr></thead><tbody id="dept-rows"></tbody></table></div>
   </section>
 
   <section class="glass card stack">
@@ -1790,6 +1793,15 @@ function loadAdmin() {
 }
 
 /* ---------- LINE alert to department heads ---------- */
+// แผนกที่เปิด "แจ้ง LINE ทันที": ส่งตอนฝากเคส (ไม่มีข้อมูลคนไข้)
+function notifyNewCase(d) {
+  if (!LINE_ALERT_URL) return;
+  const waiting = S.cases.filter((x) => x.deptId === d.id && x.status === 'pending').length + 1;
+  fetch(LINE_ALERT_URL, { method: 'POST', mode: 'no-cors', headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+    body: JSON.stringify({ type: 'newcase', key: LINE_ALERT_KEY, deptName: d.name, waiting, appUrl: location.origin + location.pathname }) })
+    .catch((e) => console.warn('LINE newcase', e));
+}
+
 function checkLineAlerts(now) {
   const esc = S.cases.filter((c) => c.status === 'pending' && !c.lineNotifiedAt
     && now - (c.createdMs ?? now) >= ESCALATE_MIN * 60000 && !S.lineTried.has(c.id));
@@ -1846,6 +1858,8 @@ function paintAdminDepts() {
   rows.innerHTML = S.depts.map((d) => `<tr>
     <td class="mono">${esc(d.order ?? '')}</td><td style="font-weight:600">${esc(d.name)}</td><td class="mono">${esc(d.ext || '')}</td><td>${esc(d.building || '')}</td>
     <td><span class="tag ${d.active === false ? 'off' : 'on'}">${d.active === false ? 'ปิดใช้งาน' : 'ใช้งาน'}</span></td>
+    <td><button type="button" class="linkbtn" style="min-height:32px" data-act="toggle-instant" data-id="${esc(d.id)}"
+      title="ส่ง LINE ถึงเจ้าหน้าที่แผนกที่ลงทะเบียนไว้ ทุกครั้งที่มีเคสใหม่">${d.instantLine ? '<span class="tag on">เปิด</span> ปิด' : 'เปิด'}</button></td>
     <td><div class="row-w"><button type="button" class="linkbtn" data-act="edit-dept" data-id="${esc(d.id)}">แก้ไข</button>
       <button type="button" class="linkbtn" data-act="toggle-dept" data-id="${esc(d.id)}">${d.active === false ? 'เปิดใช้งาน' : 'ปิดใช้งาน'}</button></div></td></tr>`).join('');
 }
@@ -2004,6 +2018,12 @@ document.addEventListener('click', async (e) => {
     case 'seed-depts': await seedDepts(el); break;
     case 'edit-dept': fillDeptForm(id); break;
     case 'dept-reset': resetDeptForm(); break;
+    case 'toggle-instant': {
+      const d = S.deptMap[id];
+      if (d) await guard(updateDoc(doc(db, 'departments', id), { instantLine: !d.instantLine }),
+        d.instantLine ? `ปิดแจ้ง LINE ทันทีของ ${esc(d.name)} แล้ว` : `เปิดแจ้ง LINE ทันทีให้ ${esc(d.name)} แล้ว`);
+      break;
+    }
     case 'toggle-dept': {
       const d = S.deptMap[id];
       if (d) await guard(updateDoc(doc(db, 'departments', id), { active: d.active === false }));
