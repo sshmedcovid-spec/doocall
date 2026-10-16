@@ -253,6 +253,30 @@ textarea.input{height:auto;padding:10px 14px;resize:vertical}
 .closed-box{border-radius:18px;overflow:hidden}
 .closed-row{display:flex;align-items:center;gap:16px;padding:14px 20px;border-bottom:1px solid var(--gray-l);flex-wrap:wrap}
 .closed-row:last-child{border-bottom:none}
+.dtag{display:inline-flex;align-items:center;padding:3px 10px;border-radius:99px;background:#E0EAFF;color:var(--blue-d);font-weight:600;font-size:13px;white-space:nowrap}
+.dtabs{align-self:stretch}
+.hist-ctrl{display:flex;flex-wrap:wrap;gap:10px;align-items:center;padding:14px 16px}
+.hist-q{flex:1;min-width:220px}
+.hsum{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.hsum .chip-n{display:inline-flex;gap:6px;align-items:center;padding:6px 12px;border-radius:99px;background:rgba(255,255,255,.75);border:1px solid #fff;font-size:14px;font-weight:600;color:var(--ink2)}
+.hday{font-family:'Prompt',sans-serif;font-weight:600;font-size:15px;color:var(--ink2);margin:8px 4px 0}
+.hbox{border-radius:18px;overflow:hidden}
+.hrow{border-bottom:1px solid var(--gray-l)}
+.hrow:last-child{border-bottom:none}
+.hrow-h{all:unset;box-sizing:border-box;display:flex;align-items:center;gap:12px;flex-wrap:wrap;width:100%;padding:13px 20px;cursor:pointer}
+.hrow-h:hover{background:rgba(37,99,235,.05)}
+.hrow-h:focus-visible{outline:3px solid var(--blue);outline-offset:-3px}
+.hrow-t{font-weight:600;color:var(--muted);min-width:46px;font-variant-numeric:tabular-nums}
+.hrow-n{font-weight:600;flex:1;min-width:140px;display:flex;gap:8px;align-items:center}
+.chev{color:var(--muted);font-size:13px}
+.hrow.open{background:rgba(239,246,255,.6)}
+.hdetail{padding:2px 20px 18px;display:flex;flex-direction:column;gap:14px}
+.dl{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:10px 24px;margin:0}
+.dl dt{font-size:13px;color:var(--muted)}
+.dl dd{margin:2px 0 0;font-weight:500;word-break:break-word}
+.dl a{color:var(--blue-d);font-weight:600;text-decoration:none}
+.dep-checks{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px 14px;max-height:340px;overflow:auto}
+.dep-checks label{display:flex;gap:8px;align-items:center;font-size:15px;cursor:pointer;min-height:34px}
 
 /* dialog / toast */
 .overlay{position:fixed;inset:0;background:rgba(11,27,63,.35);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);display:flex;align-items:center;justify-content:center;padding:16px;z-index:50}
@@ -514,7 +538,8 @@ function thaiErr(err) {
 /* ---------- state ---------- */
 const S = {
   user: null, profile: null, view: null,
-  depts: [], deptMap: {}, cases: [], caseA: new Map(), caseB: new Map(),
+  depts: [], deptMap: {}, cases: [], caseMaps: new Map(), users: [], deptView: '', histSeq: 0,
+  hist: { range: 'today', date: dayKey(), q: '', status: '', dept: '', rows: [] },
   unsubs: [], caseUnsubs: [], day: dayKey(), escKey: '',
   tab: 'open', deptFilter: '', form: { topic: '', urgent: false },
   showClosed: false, expanded: new Set(), staffRows: [], presence: {}, sent: [], deptTab: 'in', lineTried: new Set(), statsRange: 'today', statsFrom: dayKey(), statsTo: dayKey(),
@@ -645,7 +670,7 @@ function renderDeptAlarm(all, pending, open, now) {
   S.dooMood = pending.length ? mood : (open.length ? 'happy' : 'sleep');
   box.innerHTML = pending.length ? `<div class="alarm" role="alert"><div class="wrap alarm-in">
       ${SHOW_DOO ? `<div class="doo-bubble">${dooSvg(mood, 78)}</div>` : ICON.bellBig}
-      <div style="flex:1;min-width:240px"><div class="alarm-t">มีคนไข้รอให้โทรกลับ ${pending.length} ราย</div>
+      <div style="flex:1;min-width:240px"><div class="alarm-t">มีคนไข้รอให้โทรกลับ ${pending.length} ราย${isMulti() ? `<span style="font-size:.62em;font-weight:500;opacity:.92"> · ${myDepts().map((d) => [d, pending.filter((c) => c.deptId === d).length]).filter(([, n]) => n).map(([d, n]) => `${esc(deptName(d))} ${n}`).join(' · ')}</span>` : ''}</div>
         <div class="alarm-s">${SHOW_DOO ? `น้องกริ๊งกริ๊ง: “${DOO_TEXT[mood]}”` : 'เสียงจะดังจนกว่าจะมีผู้กดรับเรื่อง'}</div></div>
       <button type="button" class="btn btn-light btn-xl" style="color:var(--red-d);border:none" data-act="ack-all">รับเรื่องทั้งหมด</button>
     </div></div>` : (SHOW_DOO ? calmBar(open.length) : '');
@@ -717,7 +742,7 @@ function cleanup() {
   S.caseUnsubs.forEach((u) => u());
   clearInterval(S.hb);
   S.unsubs = []; S.caseUnsubs = [];
-  S.user = null; S.profile = null; S.cases = []; S.caseA = new Map(); S.caseB = new Map();
+  S.user = null; S.profile = null; S.cases = []; S.caseMaps = new Map(); S.deptView = ''; S.hist.rows = []; S.expanded = new Set();
   S.depts = []; S.deptMap = {}; S.escKey = '';
   closeDialog();
   document.title = 'DOOCALL';
@@ -756,7 +781,7 @@ function startListeners() {
 
 function heartbeat() {
   if (!S.profile || S.profile.role !== 'dept' || !navigator.onLine) return;
-  setDoc(doc(db, 'presence', S.profile.dept), { deptId: S.profile.dept, at: serverTimestamp() }, { merge: true }).catch(() => {});
+  myDepts().forEach((d) => setDoc(doc(db, 'presence', d), { deptId: d, at: serverTimestamp() }, { merge: true }).catch(() => {}));
 }
 document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') heartbeat(); });
 
@@ -781,24 +806,24 @@ function presenceText(p) {
 function subscribeCases() {
   S.caseUnsubs.forEach((u) => u());
   S.caseUnsubs = [];
-  S.caseA = new Map(); S.caseB = new Map();
+  S.caseMaps = new Map();
   S.day = dayKey();
   const base = collection(db, 'cases');
-  let qOpen, qToday;
+  const listen = (key, q) => S.caseUnsubs.push(onSnapshot(q, (s) => { S.caseMaps.set(key, toMap(s)); mergeCases(); }, showSysError));
   if (S.profile.role === 'dept') {
-    const d = S.profile.dept;
-    qOpen = query(base, where('deptId', '==', d), where('status', 'in', OPEN));
-    qToday = query(base, where('deptId', '==', d), where('day', '==', S.day));
+    // บัญชีแผนกฟังเคสของทุกแผนกที่ดูแล (แผนกหลัก + แผนกที่ผู้ดูแลระบบให้ดูแลเพิ่ม)
+    myDepts().forEach((d) => {
+      listen('today:' + d, query(base, where('deptId', '==', d), where('day', '==', S.day)));
+      listen('open:' + d, query(base, where('deptId', '==', d), where('status', 'in', OPEN)));
+    });
     if (S.profile.canSend) {
       S.caseUnsubs.push(onSnapshot(query(base, where('createdByUid', '==', S.user.uid), where('day', '==', S.day)),
         (snap) => { S.sent = [...toMap(snap).values()]; render(); }, showSysError));
     }
   } else {
-    qOpen = query(base, where('status', 'in', OPEN));
-    qToday = query(base, where('day', '==', S.day));
+    listen('today', query(base, where('day', '==', S.day)));
+    listen('open', query(base, where('status', 'in', OPEN)));
   }
-  S.caseUnsubs.push(onSnapshot(qOpen, (s) => { S.caseA = toMap(s); mergeCases(); }, showSysError));
-  S.caseUnsubs.push(onSnapshot(qToday, (s) => { S.caseB = toMap(s); mergeCases(); }, showSysError));
 }
 
 function toMap(snap) {
@@ -811,8 +836,9 @@ function toMap(snap) {
 }
 
 function mergeCases() {
-  const m = new Map(S.caseB);
-  S.caseA.forEach((v, k) => m.set(k, v));
+  const m = new Map();
+  const keys = [...S.caseMaps.keys()].sort((a, b) => (a.startsWith('open') ? 1 : 0) - (b.startsWith('open') ? 1 : 0));
+  keys.forEach((k) => S.caseMaps.get(k).forEach((v, id) => m.set(id, v)));
   S.cases = [...m.values()];
   clearSysError();
   render();
@@ -823,7 +849,8 @@ function onDeptsChanged() {
   if (S.profile && S.profile.role === 'dept') {
     const d = S.deptMap[S.profile.dept];
     const t = $('#dept-title'); if (t) t.textContent = d ? d.name : 'ไม่พบแผนก';
-    const s = $('#dept-sub'); if (s) s.textContent = d ? `ต่อ ${d.ext || '-'} · ${d.building || '-'}` : '';
+    const s = $('#dept-sub');
+    if (s) s.textContent = isMulti() ? `ดูแลเพิ่ม: ${myDepts().slice(1).map(deptName).join(' · ')}` : (d ? `ต่อ ${d.ext || '-'} · ${d.building || '-'}` : '');
   }
   if (S.view === 'admin') paintAdminDepts();
   if (S.view === 'dept' && S.deptTab === 'send') loadPresenceTable(null);
@@ -843,6 +870,14 @@ function view(c, now) {
   const d = S.deptMap[c.deptId] || { name: c.deptName || '-', ext: '-', building: '-' };
   return { ...c, created, d, isEsc: c.status === 'pending' && now - created >= ESCALATE_MIN * 60000 };
 }
+// แผนกที่บัญชีนี้ดูแล: แผนกหลัก + แผนกที่ดูแลเพิ่ม (users.depts)
+function myDepts() {
+  const p = S.profile || {};
+  return [...new Set([p.dept, ...(Array.isArray(p.depts) ? p.depts : [])].filter(Boolean))];
+}
+const isMulti = () => myDepts().length > 1;
+const deptName = (id) => (S.deptMap[id] && S.deptMap[id].name) || id;
+const thaiDate = (day) => { const d = new Date(`${day}T00:00:00`); return isNaN(d) ? day : d.toLocaleDateString('th-TH', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' }); };
 function escKeyNow(now) {
   return S.cases.filter((c) => c.status === 'pending' && now - (c.createdMs ?? now) >= ESCALATE_MIN * 60000)
     .map((c) => c.id).sort().join(',');
@@ -978,13 +1013,13 @@ function renderShell() {
       </div></main>`;
   } else if (S.view === 'dept') {
     const send = !!S.profile.canSend;
-    const onSend = send && S.deptTab === 'send';
-    body = `<div id="alarm"></div><main class="wrap main">
-      ${send ? `<div class="tabs" role="tablist" aria-label="มุมมอง">
-        <button type="button" role="tab" class="tab ${onSend ? '' : 'on'}" aria-selected="${!onSend}" data-act="dtab" data-v="in">คนไข้ที่ต้องโทรกลับ<span class="n" id="n-in">0</span></button>
-        <button type="button" role="tab" class="tab ${onSend ? 'on' : ''}" aria-selected="${onSend}" data-act="dtab" data-v="send">ส่งข้อมูลให้แผนกอื่น<span class="n" id="n-sent">0</span></button>
-      </div>` : ''}
-      ${onSend ? `<div class="layout">
+    if (S.deptTab === 'send' && !send) S.deptTab = 'in';
+    const t = S.deptTab;
+    const tabs = [['in', 'คนไข้ที่ต้องโทรกลับ', 'n-in'], ['hist', 'ประวัติเคส', '']].concat(send ? [['send', 'ส่งข้อมูลให้แผนกอื่น', 'n-sent']] : []);
+    const tabsHtml = `<div class="tabs" role="tablist" aria-label="มุมมอง">${tabs.map(([v, l, n]) =>
+      `<button type="button" role="tab" class="tab ${t === v ? 'on' : ''}" aria-selected="${t === v}" data-act="dtab" data-v="${v}">${l}${n ? `<span class="n" id="${n}">0</span>` : ''}</button>`).join('')}</div>`;
+    let inner;
+    if (t === 'send') inner = `<div class="layout">
         <section class="glass card form-card" aria-labelledby="form-title">${formHtml()}</section>
         <section class="stack" style="min-width:0"><h2 class="h2">เคสที่ส่งวันนี้</h2><div id="sent-list"></div>
           <div class="glass card stack-sm">
@@ -992,11 +1027,14 @@ function renderShell() {
               <button type="button" class="btn btn-light sm" data-act="presence-load">ตรวจสอบตอนนี้</button></div>
             <div id="presence-body"></div>
           </div></section>
-      </div>` : `
+      </div>`;
+    else if (t === 'hist') inner = `<section class="stack" id="hist-area" aria-label="ประวัติเคส"></section>`;
+    else inner = `
       <div id="dstats" class="dstats"></div>
-      ${send ? '' : '<h2 class="h2">คนไข้ที่ต้องโทรกลับ</h2>'}
+      <div id="dfilter"></div>
       <div id="dlist"></div>
-      <div id="dclosed" class="stack-sm"></div>`}</main>`;
+      <div id="dclosed" class="stack-sm"></div>`;
+    body = `<div id="alarm"></div><main class="wrap main">${tabsHtml}${inner}</main>`;
   } else if (S.view === 'stats') {
     body = `<main class="wrap main" id="stats-area"></main>`;
   } else if (S.view === 'admin') {
@@ -1022,6 +1060,7 @@ function renderShell() {
   if (S.profile.role === 'dept') onDeptsChanged();
   if (S.view === 'board' || (S.view === 'dept' && S.deptTab === 'send')) paintFormChips();
   if (S.view === 'dept' && S.deptTab === 'send') loadPresenceTable(null);
+  if (S.view === 'dept' && S.deptTab === 'hist') { renderHistShell(); loadHistory(); }
   if (S.view === 'stats') loadStats();
   if (S.view === 'admin') loadAdmin();
   render();
@@ -1244,7 +1283,6 @@ function opCard(c) {
 /* ---------- department ---------- */
 function renderSent() {
   const box = $('#sent-list');
-  const nIn = $('#n-in'); if (nIn) nIn.textContent = S.cases.filter((c) => OPEN.includes(c.status)).length;
   const nS = $('#n-sent'); if (nS) nS.textContent = S.sent.length;
   if (!box) return;
   const now = Date.now();
@@ -1255,12 +1293,20 @@ function renderSent() {
 
 function renderDept() {
   if (S.profile && S.profile.canSend) renderSent();
+  const nIn = $('#n-in'); if (nIn) nIn.textContent = S.cases.filter((c) => OPEN.includes(c.status)).length;
   const listBox = $('#dlist');
   if (!listBox) { renderDeptAlarm(); return; }
   const now = Date.now();
   const today = dayKey();
-  const all = S.cases.map((c) => view(c, now));
-  const pending = all.filter((c) => c.status === 'pending');
+  const every = S.cases.map((c) => view(c, now));
+  const pendingAll = every.filter((c) => c.status === 'pending');
+  const openAll = every.filter((c) => c.status === 'pending' || c.status === 'ack');
+  // เสียงเตือนและแถบด้านบนนับทุกแผนกที่ดูแล ส่วนรายการด้านล่างกรองตามแผนกที่เลือก
+  renderDeptAlarm(every, pendingAll, openAll, now);
+
+  const multi = isMulti();
+  if (!multi || (S.deptView && !myDepts().includes(S.deptView))) S.deptView = '';
+  const all = S.deptView ? every.filter((c) => c.deptId === S.deptView) : every;
   const open = all.filter((c) => c.status === 'pending' || c.status === 'ack').sort((a, b) => {
     if ((a.status === 'pending') !== (b.status === 'pending')) return a.status === 'pending' ? -1 : 1;
     if (!!a.urgent !== !!b.urgent) return a.urgent ? -1 : 1;
@@ -1268,13 +1314,18 @@ function renderDept() {
   });
   const closed = all.filter((c) => CLOSED.includes(c.status) && c.status !== 'cancelled').sort((a, b) => (b.closedMs || 0) - (a.closedMs || 0));
 
-  renderDeptAlarm(all, pending, open, now);
+  const fbox = $('#dfilter');
+  if (fbox) fbox.innerHTML = multi ? `<div class="tabs" role="group" aria-label="เลือกแผนก">${[''].concat(myDepts()).map((d) => {
+      const n = openAll.filter((c) => !d || c.deptId === d).length;
+      const p = pendingAll.some((c) => !d || c.deptId === d);
+      return `<button type="button" class="tab ${S.deptView === d ? 'on' : ''}" aria-pressed="${S.deptView === d}" data-act="dview" data-v="${esc(d)}">${d ? esc(deptName(d)) : 'ทุกแผนกที่ดูแล'}<span class="n" ${p ? 'style="background:var(--red);color:#fff"' : ''}>${n}</span></button>`;
+    }).join('')}</div>` : '';
 
   const todays = all.filter((c) => c.day === today);
   const acked = todays.filter((c) => typeof c.ackSeconds === 'number');
   const avg = acked.length ? acked.reduce((t, c) => t + c.ackSeconds, 0) / acked.length : 0;
   $('#dstats').innerHTML = [
-    kpi('เคสวันนี้', todays.length, 'ที่ Operator ฝากมา', 'blue', ICON.inbox),
+    kpi('เคสวันนี้', todays.length, S.deptView ? deptName(S.deptView) : (multi ? `${myDepts().length} แผนกที่ดูแล` : 'ที่ Operator ฝากมา'), 'blue', ICON.inbox),
     kpi('รับเรื่องเฉลี่ย (นาที)', dur(avg * 1000), 'วันนี้', 'amber', ICON.clock),
     kpi('โทรกลับสำเร็จ', todays.filter((c) => c.status === 'done').length, 'วันนี้', 'green', ICON.check)
   ].join('');
@@ -1286,13 +1337,137 @@ function renderDept() {
        <div class="sub2">เมื่อ Operator ฝากเคสใหม่ จะมีเสียงเตือนและแถบสีแดงขึ้นด้านบน</div></div>`;
 
   $('#dclosed').innerHTML = `
-    <button type="button" class="btn btn-light sm" style="align-self:flex-start" data-act="toggle-closed" aria-expanded="${S.showClosed}">
+    <div class="row-w"><button type="button" class="btn btn-light sm" data-act="toggle-closed" aria-expanded="${S.showClosed}">
       ${S.showClosed ? 'ซ่อนเคสที่ปิดแล้ว' : 'แสดงเคสที่ปิดแล้ววันนี้'} (${closed.length})</button>
-    ${S.showClosed && closed.length ? `<div class="glass closed-box">${closed.map((c) => `
-      <div class="closed-row"><span class="muted" style="font-weight:600">${c.closedMs ? hm(c.closedMs) : '-'}</span>
-        <span style="font-weight:600;flex:1">${esc(c.patientName)}</span>
-        <span class="muted">${esc(c.topic)}</span>
-        <span class="pill st-${esc(c.status)}">${SHORT[c.status] || ''}</span>${reportBtn(c)}</div>`).join('')}</div>` : ''}`;
+      <button type="button" class="linkbtn" data-act="dtab" data-v="hist">ดูประวัติย้อนหลัง</button></div>
+    ${S.showClosed && closed.length ? `<p class="sub">คลิกที่เคสเพื่อดูรายละเอียด</p><div class="glass hbox">${closed.map(histRow).join('')}</div>` : ''}`;
+}
+
+/* ---------- department: history ---------- */
+const HIST_RANGES = [['today', 'วันนี้'], ['yesterday', 'เมื่อวาน'], ['7', '7 วัน'], ['30', '30 วัน'], ['date', 'เลือกวันที่']];
+const HIST_STATUS = [['', 'ทุกสถานะ'], ['open', 'ยังไม่ปิด'], ['done', 'สำเร็จ'], ['fail', 'ติดต่อไม่ได้'], ['cancelled', 'ยกเลิก']];
+function histDays() {
+  const h = S.hist;
+  if (h.range === 'today') return [dayKey()];
+  if (h.range === 'yesterday') return [dayOffset(-1)];
+  if (h.range === 'date') return [h.date || dayKey()];
+  const n = h.range === '30' ? 30 : 7; // Firestore "in" รับได้สูงสุด 30 ค่า
+  return Array.from({ length: n }, (_, i) => dayOffset(-i));
+}
+function renderHistShell() {
+  const area = $('#hist-area'); if (!area) return;
+  const h = S.hist;
+  if (h.dept && !myDepts().includes(h.dept)) h.dept = '';
+  area.innerHTML = `
+    <div class="board-head"><div><h2 class="h2">ประวัติเคส</h2><p class="sub">ดูย้อนหลังได้สูงสุด 30 วัน · คลิกที่เคสเพื่อดูรายละเอียด</p></div>
+      <button type="button" class="btn btn-light sm" data-act="hist-export">${ICON.download} ดาวน์โหลด Excel</button></div>
+    <div class="glass card hist-ctrl">
+      <div class="segbox" role="group" aria-label="ช่วงเวลา">${HIST_RANGES.map(([v, l]) =>
+        `<button type="button" data-act="hist-range" data-v="${v}" class="${h.range === v ? 'on' : ''}" aria-pressed="${h.range === v}">${l}</button>`).join('')}</div>
+      ${h.range === 'date' ? `<label class="sr" for="h-date">วันที่</label><input type="date" id="h-date" class="input sm" value="${esc(h.date)}" max="${dayKey()}">` : ''}
+      <label class="sr" for="h-q">ค้นหา</label><input id="h-q" class="input sm hist-q" placeholder="ค้นหาชื่อ เบอร์โทร HN หรือเรื่อง" value="${esc(h.q)}" autocomplete="off">
+      <label class="sr" for="h-st">สถานะ</label><select id="h-st" class="input sm">${HIST_STATUS.map(([v, l]) => `<option value="${v}" ${h.status === v ? 'selected' : ''}>${l}</option>`).join('')}</select>
+      ${isMulti() ? `<label class="sr" for="h-dept">แผนก</label><select id="h-dept" class="input sm"><option value="">ทุกแผนกที่ดูแล</option>${myDepts().map((d) => `<option value="${esc(d)}" ${h.dept === d ? 'selected' : ''}>${esc(deptName(d))}</option>`).join('')}</select>` : ''}
+    </div>
+    <div id="hist-list" class="stack-sm"></div>`;
+}
+async function loadHistory() {
+  const box = $('#hist-list'); if (!box) return;
+  const seq = ++S.histSeq;
+  box.innerHTML = '<div class="empty">กำลังโหลด…</div>';
+  const days = histDays();
+  try {
+    const snaps = await Promise.all(myDepts().map((d) =>
+      getDocs(query(collection(db, 'cases'), where('deptId', '==', d), where('day', 'in', days)))));
+    if (seq !== S.histSeq) return;
+    const m = new Map();
+    snaps.forEach((snap) => toMap(snap).forEach((v, k) => m.set(k, v)));
+    S.hist.rows = [...m.values()];
+    paintHistory();
+  } catch (err) {
+    console.error(err);
+    if (seq === S.histSeq) box.innerHTML = msgHtml('error', thaiErr(err));
+  }
+}
+function histFiltered() {
+  const h = S.hist;
+  const q = h.q.trim().toLowerCase();
+  const qd = q.replace(/\D/g, '');
+  const now = Date.now();
+  return h.rows.map((c) => view(c, now)).filter((c) => {
+    if (h.dept && c.deptId !== h.dept) return false;
+    if (h.status === 'open' && !OPEN.includes(c.status)) return false;
+    if (h.status === 'fail' && !['fail', 'wrong'].includes(c.status)) return false;
+    if (h.status && !['open', 'fail'].includes(h.status) && c.status !== h.status) return false;
+    if (!q) return true;
+    const hay = [c.patientName, c.topic, c.hn, c.note, c.ackEmpId].join(' ').toLowerCase();
+    return hay.includes(q) || (qd.length >= 3 && String(c.phone || '').replace(/\D/g, '').includes(qd));
+  }).sort((a, b) => b.created - a.created);
+}
+function paintHistory() {
+  const box = $('#hist-list'); if (!box) return;
+  const list = histFiltered();
+  const cnt = (f) => list.filter(f).length;
+  const sum = `<div class="hsum">
+    <span class="chip-n">ทั้งหมด ${list.length} เคส</span>
+    <span class="chip-n"><span class="dot" style="background:var(--green)"></span>สำเร็จ ${cnt((c) => c.status === 'done')}</span>
+    <span class="chip-n"><span class="dot" style="background:#E8A33D"></span>ติดต่อไม่ได้ ${cnt((c) => c.status === 'fail' || c.status === 'wrong')}</span>
+    <span class="chip-n"><span class="dot" style="background:var(--red)"></span>ยังไม่ปิด ${cnt((c) => OPEN.includes(c.status))}</span>
+    <span class="chip-n"><span class="dot" style="background:#8C99A6"></span>ยกเลิก ${cnt((c) => c.status === 'cancelled')}</span></div>`;
+  if (!list.length) { box.innerHTML = sum + `<div class="empty">${S.hist.rows.length ? 'ไม่พบเคสที่ตรงกับการค้นหา' : 'ไม่มีเคสในช่วงเวลานี้'}</div>`; return; }
+  const groups = [];
+  list.forEach((c) => { const g = groups[groups.length - 1]; if (g && g.day === c.day) g.items.push(c); else groups.push({ day: c.day, items: [c] }); });
+  box.innerHTML = sum + groups.map((g) => `<div class="hday">${esc(thaiDate(g.day))} · ${g.items.length} เคส</div>
+    <div class="glass hbox">${g.items.map(histRow).join('')}</div>`).join('');
+}
+function histRow(c) {
+  const show = S.expanded.has('h:' + c.id);
+  return `<div class="hrow${show ? ' open' : ''}">
+    <button type="button" class="hrow-h" data-act="toggle-h" data-id="${esc(c.id)}" aria-expanded="${show}">
+      <span class="hrow-t">${hm(c.created)}</span>
+      <span class="hrow-n">${esc(c.patientName)}${c.urgent ? '<span class="urgent">ด่วน</span>' : ''}</span>
+      ${isMulti() ? `<span class="dtag">${esc(c.d.name)}</span>` : ''}
+      <span class="tag-topic">${esc(c.topic || '-')}</span>
+      ${c.reportType ? `<span class="tag-warn">รายงานแล้ว</span>` : ''}
+      <span class="pill st-${esc(c.status)}">${SHORT[c.status] || esc(c.status)}</span>
+      <span class="chev" aria-hidden="true">${show ? '▴' : '▾'}</span>
+    </button>
+    ${show ? caseDetail(c) : ''}
+  </div>`;
+}
+function caseDetail(c) {
+  const tel = String(c.phone || '').replace(/[^0-9+]/g, '');
+  const sender = c.senderDeptName ? `${c.senderDeptName}${c.createdByName && c.createdByName !== c.senderDeptName ? ` (${c.createdByName})` : ''}` : (c.createdByName || '-');
+  const rows = [
+    ['เบอร์โทรคนไข้', c.masked ? esc(c.phone || '-') : `<a href="tel:${esc(tel)}">${esc(fmtPhone(c.phone))}</a>`],
+    ['HN', esc(c.hn || '-')],
+    ['เรื่องที่ติดต่อ', esc(c.topic || '-') + (c.urgent ? ' · <b style="color:var(--red)">ด่วน</b>' : '')],
+    ['รายละเอียด', c.note ? esc(c.note) : '-'],
+    ['แผนก', esc(c.d.name)],
+    ['ผู้ฝากเคส', esc(sender)],
+    ['ผู้รับเรื่อง', c.ackEmpId ? `ID ${esc(c.ackEmpId)}` : '-'],
+    ['โทรไม่ติด', c.attempts ? `${c.attempts} ครั้ง` : '-'],
+    ['ผลการติดต่อ', esc(STATUS[c.status] || c.status)]
+  ];
+  if (c.reportType) rows.push(['รายงาน', esc(REPORT_TYPES[c.reportType] || c.reportType) + (c.reportToName ? ` → ${esc(c.reportToName)}` : '') + (c.reportNote ? `<br><span class="sub">${esc(c.reportNote)}</span>` : '')]);
+  const canReport = !c.reportType && !['pending', 'cancelled'].includes(c.status);
+  return `<div class="hdetail">
+    <dl class="dl">${rows.map(([k, v]) => `<div><dt>${k}</dt><dd>${v}</dd></div>`).join('')}</dl>
+    ${timeline(c, Date.now())}
+    <div class="row-w" style="justify-content:space-between"><span class="sub">วันที่ฝาก ${esc(thaiDate(c.day))}</span>${canReport ? reportBtn(c) : ''}</div>
+  </div>`;
+}
+function exportHistory() {
+  const list = histFiltered();
+  if (!list.length) { toast('error', 'ไม่มีข้อมูลให้ดาวน์โหลด'); return; }
+  const t = (ms) => (ms ? hms(ms) : '');
+  const lines = [['วันที่', 'เวลาฝาก', 'แผนก', 'ชื่อคนไข้', 'เบอร์โทร', 'HN', 'เรื่อง', 'รายละเอียด', 'ด่วน', 'ผู้ฝาก', 'รับเรื่อง', 'ID ผู้รับเรื่อง', 'โทรครั้งแรก', 'ปิดเคส', 'โทรไม่ติด (ครั้ง)', 'ผล', 'รายงาน']]
+    .concat(list.map((c) => [c.day, t(c.created), c.d.name, c.patientName, c.phone, c.hn || '', c.topic || '', c.note || '', c.urgent ? 'ด่วน' : '',
+      c.senderDeptName || c.createdByName || '', t(c.ackMs), c.ackEmpId || '', t(c.callMs), t(c.closedMs), c.attempts || 0,
+      STATUS[c.status] || c.status, c.reportType ? `${REPORT_TYPES[c.reportType] || ''}${c.reportToName ? ' → ' + c.reportToName : ''} ${c.reportNote || ''}`.trim() : '']));
+  const days = histDays();
+  downloadCSV(lines, `doocall_history_${days[days.length - 1]}_${days[0]}.csv`);
+  toast('ok', `ดาวน์โหลดแล้ว ${list.length} เคส`);
 }
 
 function deptCard(c, now) {
@@ -1301,7 +1476,7 @@ function deptCard(c, now) {
   const tel = String(c.phone || '').replace(/[^0-9+]/g, '');
   return `<article class="dcase glass s-${esc(c.status)}">
     <div style="display:flex;justify-content:space-between;align-items:center;gap:10px">
-      <div class="row-w"><span class="pill lg st-${esc(c.status)}">${SHORT[c.status]}</span>${c.urgent ? '<span class="urgent">ด่วน</span>' : ''}</div>
+      <div class="row-w"><span class="pill lg st-${esc(c.status)}">${SHORT[c.status]}</span>${c.urgent ? '<span class="urgent">ด่วน</span>' : ''}${isMulti() ? `<span class="dtag">${esc(c.d.name)}</span>` : ''}</div>
       <span class="wait ${pending && late ? 'late' : ''}">${ICON.clockSm} รอ <span data-since="${c.created}" data-fmt="wait">${longDur(now - c.created)}</span></span>
     </div>
     <div class="stack-sm" style="gap:6px"><div class="big-name">${esc(c.patientName)}</div>
@@ -1353,7 +1528,7 @@ async function closeCase(id, status) {
     if (!allowedFrom.includes(c.status)) return false;
     const upd = {
       status, closedAt: serverTimestamp(), closedByUid: S.user.uid,
-      closedByName: S.profile.role === 'dept' ? 'แผนก' : (S.profile.displayName || S.profile.username || '')
+      closedByName: S.profile.role === 'dept' ? (S.profile.displayName || deptName(S.profile.dept) || 'แผนก') : (S.profile.displayName || S.profile.username || '')
     };
     const st = { [status]: increment(1) };
     const ackMs = tms(c.ackAt);
@@ -1400,7 +1575,7 @@ function reportBtn(c) {
 }
 
 function openReport(id) {
-  const c = S.cases.find((x) => x.id === id); if (!c) return;
+  const c = S.cases.find((x) => x.id === id) || S.hist.rows.find((x) => x.id === id); if (!c) return;
   const opts = S.depts.filter((d) => d.active !== false && d.id !== c.deptId)
     .map((d) => `<option value="${esc(d.id)}">${esc(d.name)}</option>`).join('');
   S.dialog = { type: 'report', target: id };
@@ -1445,6 +1620,7 @@ async function submitReport(form) {
     });
     closeDialog();
     toast(ok ? 'ok' : 'error', ok ? 'บันทึกรายงานแล้ว ขอบคุณค่ะ' : 'เคสนี้มีการรายงานไปแล้ว');
+    if ($('#hist-list')) loadHistory();
   } catch (err) { box.innerHTML = msgHtml('error', thaiErr(err)); btn.disabled = false; }
 }
 
@@ -1907,15 +2083,47 @@ async function loadUsers() {
     const snap = await getDocs(collection(db, 'users'));
     const users = snap.docs.map((d) => ({ uid: d.id, ...d.data() }))
       .sort((a, b) => (a.role || '').localeCompare(b.role || '') || (a.username || '').localeCompare(b.username || ''));
+    S.users = users;
     rows.innerHTML = users.map((u) => `<tr>
       <td class="mono">${esc(u.username || '')}</td><td>${esc(u.displayName || '')}</td><td>${ROLE[u.role] || esc(u.role)}</td>
       <td>${u.dept ? esc((S.deptMap[u.dept] && S.deptMap[u.dept].name) || u.dept) : '-'}
-        ${u.role === 'dept' && u.uid !== S.user.uid ? `<br><button type="button" class="linkbtn" style="min-height:32px;font-size:13px" data-act="toggle-send" data-id="${esc(u.uid)}" data-on="${u.canSend ? '1' : '0'}">${u.canSend ? '✓ ส่งเคสได้ · ปิดสิทธิ์' : 'ให้สิทธิ์ส่งเคส'}</button>` : ''}</td>
+        ${u.role === 'dept' && u.uid !== S.user.uid ? `<br><button type="button" class="linkbtn" style="min-height:32px;font-size:13px" data-act="toggle-send" data-id="${esc(u.uid)}" data-on="${u.canSend ? '1' : '0'}">${u.canSend ? '✓ ส่งเคสได้ · ปิดสิทธิ์' : 'ให้สิทธิ์ส่งเคส'}</button>` : ''}
+        ${u.role === 'dept' && Array.isArray(u.depts) && u.depts.length ? `<div class="sub" style="margin-top:2px">ดูแลเพิ่ม: ${u.depts.map((d) => esc(deptName(d))).join(', ')}</div>` : ''}
+        ${u.role === 'dept' ? `<button type="button" class="linkbtn" style="min-height:32px;font-size:13px" data-act="edit-depts" data-id="${esc(u.uid)}">แผนกที่ดูแลเพิ่ม${u.depts && u.depts.length ? ` (${u.depts.length})` : ''}</button>` : ''}</td>
       <td><span class="tag ${u.active ? 'on' : 'off'}">${u.active ? 'ใช้งาน' : 'ปิดใช้งาน'}</span></td>
       <td>${u.uid === S.user.uid ? '<span class="sub">บัญชีของคุณ</span>'
         : `<button type="button" class="linkbtn" data-act="toggle-user" data-id="${esc(u.uid)}" data-on="${u.active ? '1' : '0'}">${u.active ? 'ปิดใช้งาน' : 'เปิดใช้งาน'}</button>`}</td></tr>`).join('')
       || '<tr><td colspan="6" class="muted">ยังไม่มีบัญชี</td></tr>';
   } catch (err) { rows.innerHTML = `<tr><td colspan="6">${msgHtml('error', thaiErr(err))}</td></tr>`; }
+}
+
+function openDeptsDialog(uid) {
+  const u = S.users.find((x) => x.uid === uid); if (!u) return;
+  const cur = new Set(Array.isArray(u.depts) ? u.depts : []);
+  const opts = S.depts.filter((d) => d.id !== u.dept && d.active !== false)
+    .map((d) => `<label><input type="checkbox" name="d" value="${esc(d.id)}" ${cur.has(d.id) ? 'checked' : ''}> ${esc(d.name)}</label>`).join('');
+  S.dialog = { type: 'depts', target: uid };
+  $('#dialog').innerHTML = `<div class="overlay">
+    <form id="depts-form" class="dialog" style="max-width:560px" role="dialog" aria-modal="true" aria-labelledby="dp-t" novalidate>
+      <div><h2 id="dp-t" class="h2">แผนกที่ดูแลเพิ่ม</h2>
+        <p class="sub2">บัญชี <b>${esc(u.username || '')}</b> (แผนกหลัก ${esc(deptName(u.dept))}) จะเห็นเคส ได้ยินเสียงเตือน รับเรื่อง ปิดเคส และดูประวัติของแผนกที่เลือกได้ด้วย</p></div>
+      <div class="dep-checks">${opts}</div>
+      <div id="dp-msg"></div>
+      <div class="dlg-btns"><button type="button" class="btn btn-light" data-act="dlg-close">ยกเลิก</button>
+        <button type="submit" class="btn btn-primary">บันทึก</button></div>
+      <div class="sub">มีผลเมื่อบัญชีนั้นออกจากระบบแล้วเข้าใหม่</div>
+    </form></div>`;
+}
+async function submitDepts(form) {
+  const uid = S.dialog && S.dialog.target; if (!uid) return;
+  const depts = [...form.querySelectorAll('input[name=d]:checked')].map((x) => x.value);
+  const btn = form.querySelector('button[type=submit]'); btn.disabled = true;
+  try {
+    await updateDoc(doc(db, 'users', uid), { depts });
+    closeDialog();
+    toast('ok', 'บันทึกแล้ว — ให้บัญชีนั้นออกจากระบบแล้วเข้าใหม่');
+    loadUsers();
+  } catch (err) { $('#dp-msg').innerHTML = msgHtml('error', thaiErr(err)); btn.disabled = false; }
 }
 
 function getSecondaryAuth() {
@@ -2003,7 +2211,13 @@ document.addEventListener('click', async (e) => {
     case 'ack': openAck(id); break;
     case 'ack-all': openAck('all'); break;
     case 'report': openReport(id); break;
-    case 'dtab': S.deptTab = el.dataset.v; renderShell(); break;
+    case 'dtab': S.deptTab = el.dataset.v; renderShell(); window.scrollTo(0, 0); break;
+    case 'dview': S.deptView = el.dataset.v || ''; renderDept(); break;
+    case 'hist-range': S.hist.range = el.dataset.v; renderHistShell(); loadHistory(); break;
+    case 'hist-export': exportHistory(); break;
+    case 'toggle-h': { const k = 'h:' + id; if (S.expanded.has(k)) S.expanded.delete(k); else S.expanded.add(k);
+      if ($('#hist-list')) paintHistory(); else renderDept(); break; }
+    case 'edit-depts': openDeptsDialog(id); break;
     case 'presence-load': await loadPresenceTable(el); break;
     case 'retry': await guard(recordAttempt(id), 'บันทึกว่าโทรไม่ติดแล้ว'); break;
     case 'done': el.disabled = true; await guard(closeCase(id, 'done'), 'ปิดเคส: โทรกลับสำเร็จ'); break;
@@ -2044,7 +2258,7 @@ document.addEventListener('submit', (e) => {
   const f = e.target;
   const handlers = {
     'login-form': doLogin, 'case-form': submitCase, 'ack-form': submitAck, 'report-form': submitReport, 'pw-form': submitPw,
-    'dept-form': submitDept, 'user-form': submitUser,
+    'dept-form': submitDept, 'user-form': submitUser, 'depts-form': submitDepts,
     'range-form': (form) => {
       const from = form.from.value, to = form.to.value;
       if (!from || !to || from > to) { toast('error', 'ช่วงวันที่ไม่ถูกต้อง'); return; }
@@ -2058,7 +2272,14 @@ document.addEventListener('change', (e) => {
   if (e.target.id === 'f-dept') { paintDeptInfo(); paintPresence(); }
   if (e.target.id === 'f-filter') { S.deptFilter = e.target.value; renderBoard(); }
   if (e.target.id === 'u-role') toggleUserDept();
+  if (e.target.id === 'h-date') { S.hist.date = e.target.value || dayKey(); loadHistory(); }
+  if (e.target.id === 'h-st') { S.hist.status = e.target.value; paintHistory(); }
+  if (e.target.id === 'h-dept') { S.hist.dept = e.target.value; paintHistory(); }
   if (e.target.name === 'type' && e.target.closest('#report-form')) { const f = $('#rp-to-f'); if (f) f.style.display = e.target.value === 'misroute' ? '' : 'none'; }
+});
+
+document.addEventListener('input', (e) => {
+  if (e.target.id === 'h-q') { S.hist.q = e.target.value; paintHistory(); }
 });
 
 document.addEventListener('keydown', (e) => {
