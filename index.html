@@ -538,7 +538,7 @@ function thaiErr(err) {
 /* ---------- state ---------- */
 const S = {
   user: null, profile: null, view: null,
-  depts: [], deptMap: {}, cases: [], caseMaps: new Map(), users: [], deptView: '', histSeq: 0,
+  depts: [], deptMap: {}, cases: [], caseMaps: new Map(), fwd: new Set(), users: [], deptView: '', histSeq: 0,
   hist: { range: 'today', date: dayKey(), q: '', status: '', dept: '', rows: [] },
   unsubs: [], caseUnsubs: [], day: dayKey(), escKey: '',
   tab: 'open', deptFilter: '', form: { topic: '', urgent: false },
@@ -662,9 +662,10 @@ function renderDeptAlarm(all, pending, open, now) {
   now = now || Date.now();
   if (!all) {
     all = S.cases.map((c) => view(c, now));
-    pending = all.filter((c) => c.status === 'pending');
+    pending = all.filter(ringing);
     open = all.filter((c) => c.status === 'pending' || c.status === 'ack');
   }
+  const fwdN = open.filter(isFwd).length;
   const oldest = pending.length ? Math.min(...pending.map((c) => c.created)) : now;
   const mood = dooMoodFor(now - oldest);
   S.dooMood = pending.length ? mood : (open.length ? 'happy' : 'sleep');
@@ -673,13 +674,14 @@ function renderDeptAlarm(all, pending, open, now) {
       <div style="flex:1;min-width:240px"><div class="alarm-t">มีคนไข้รอให้โทรกลับ ${pending.length} ราย${isMulti() ? `<span style="font-size:.62em;font-weight:500;opacity:.92"> · ${myDepts().map((d) => [d, pending.filter((c) => c.deptId === d).length]).filter(([, n]) => n).map(([d, n]) => `${esc(deptName(d))} ${n}`).join(' · ')}</span>` : ''}</div>
         <div class="alarm-s">${SHOW_DOO ? `น้องกริ๊งกริ๊ง: “${DOO_TEXT[mood]}”` : 'เสียงจะดังจนกว่าจะมีผู้กดรับเรื่อง'}</div></div>
       <button type="button" class="btn btn-light btn-xl" style="color:var(--red-d);border:none" data-act="ack-all">รับเรื่องทั้งหมด</button>
-    </div></div>` : (SHOW_DOO ? calmBar(open.length) : '');
+    </div></div>` : (SHOW_DOO ? calmBar(open.length - fwdN, fwdN) : '');
 }
 
-function calmBar(ackN) {
-  const mood = ackN ? 'happy' : 'sleep';
-  const title = ackN ? 'รับเรื่องครบแล้ว' : 'ไม่มีเคสค้าง';
-  const say = ackN ? `เหลือโทรกลับอีก ${ackN} ราย สู้ๆ นะคะ` : DOO_TEXT.sleep;
+function calmBar(ackN, fwdN = 0) {
+  const mood = ackN || fwdN ? 'happy' : 'sleep';
+  const title = ackN ? 'รับเรื่องครบแล้ว' : fwdN ? `ส่งต่อแล้ว ${fwdN} เคส` : 'ไม่มีเคสค้าง';
+  const say = ackN ? `เหลือโทรกลับอีก ${ackN} ราย สู้ๆ นะคะ${fwdN ? ` · ส่งต่อให้แผนกรับเอง ${fwdN} เคส` : ''}`
+    : fwdN ? 'รอแผนกเจ้าของรับเรื่องเองค่ะ' : DOO_TEXT.sleep;
   return `<div class="calm"><div class="wrap alarm-in">
       <div class="doo-bubble calm-b">${dooSvg(mood, 78)}</div>
       <div style="flex:1;min-width:240px"><div class="alarm-t" style="color:var(--ink)">${title}</div>
@@ -722,6 +724,7 @@ async function handleAuth(user) {
     }
     S.user = user;
     S.profile = { uid: user.uid, ...snap.data() };
+    loadFwd();
     if (S.profile.role === 'dept' && !S.profile.dept) {
       await signOut(auth);
       renderLogin('บัญชีแผนกนี้ยังไม่ได้ผูกกับแผนก กรุณาติดต่อผู้ดูแลระบบ');
@@ -840,6 +843,14 @@ function mergeCases() {
   const keys = [...S.caseMaps.keys()].sort((a, b) => (a.startsWith('open') ? 1 : 0) - (b.startsWith('open') ? 1 : 0));
   keys.forEach((k) => S.caseMaps.get(k).forEach((v, id) => m.set(id, v)));
   S.cases = [...m.values()];
+  if (S.fwd.size) {
+    // ลบเฉพาะเคสที่โหลดมาแล้วและไม่ได้รอรับเรื่องแล้ว (ข้อมูลแต่ละแผนกมาไม่พร้อมกัน)
+    const done = new Set(S.cases.filter((c) => c.status !== 'pending').map((c) => c.id));
+    const before = S.fwd.size;
+    S.fwd.forEach((id) => { if (done.has(id)) S.fwd.delete(id); });
+    if (S.fwd.size > 300) S.fwd = new Set([...S.fwd].slice(-300));
+    if (S.fwd.size !== before) saveFwd();
+  }
   clearSysError();
   render();
 }
@@ -876,6 +887,17 @@ function myDepts() {
   return [...new Set([p.dept, ...(Array.isArray(p.depts) ? p.depts : [])].filter(Boolean))];
 }
 const isMulti = () => myDepts().length > 1;
+const isStaffOp = () => !!S.profile && S.profile.role !== 'dept';
+// แผนกที่ดูประวัติได้: Operator/Admin = ทุกแผนก, บัญชีแผนก = แผนกที่ดูแล
+const histScope = () => (isStaffOp() ? S.depts.map((d) => d.id) : myDepts());
+const showDeptTag = () => isStaffOp() || isMulti();
+// "ส่งต่อ": จอที่ดูแลหลายแผนกปิดเสียงเคสของแผนกอื่นทีละเคส ให้แผนกเจ้าของรับเอง (จำไว้เฉพาะเครื่องนี้)
+const fwdKey = () => `doocall_fwd_${(S.user && S.user.uid) || ''}`;
+function loadFwd() { try { S.fwd = new Set(JSON.parse(localStorage.getItem(fwdKey()) || '[]')); } catch (e) { S.fwd = new Set(); } }
+function saveFwd() { try { localStorage.setItem(fwdKey(), JSON.stringify([...S.fwd])); } catch (e) { /* ใช้ได้ต่อแม้บันทึกไม่ได้ */ } }
+const canFwd = (c) => isMulti() && c.status === 'pending' && c.deptId !== (S.profile && S.profile.dept);
+const isFwd = (c) => S.fwd.has(c.id) && c.status === 'pending';
+const ringing = (c) => c.status === 'pending' && !isFwd(c);
 const deptName = (id) => (S.deptMap[id] && S.deptMap[id].name) || id;
 const thaiDate = (day) => { const d = new Date(`${day}T00:00:00`); return isNaN(d) ? day : d.toLocaleDateString('th-TH', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' }); };
 function escKeyNow(now) {
@@ -904,11 +926,11 @@ function tick() {
   paintNet();
   if (S.profile.role === 'dept') {
     paintSound();
-    const pend = S.cases.filter((c) => c.status === 'pending');
+    const pend = S.cases.filter(ringing);
     const n = pend.length;
     if (SHOW_DOO) {
       const md = n ? dooMoodFor(now - Math.min(...pend.map((c) => c.createdMs ?? now)))
-        : (S.cases.some((c) => c.status === 'ack') ? 'happy' : 'sleep');
+        : (S.cases.some((c) => c.status === 'ack' || c.status === 'pending') ? 'happy' : 'sleep');
       if (md !== S.dooMood) renderDept();
     }
     document.title = n ? `(${n}) มีคนไข้รอโทรกลับ` : 'DOOCALL';
@@ -991,7 +1013,7 @@ function renderShell() {
   const isDept = p.role === 'dept';
   const name = esc(p.displayName || p.username || '');
   const nav = isDept ? '' : `<nav class="nav" aria-label="เมนูหลัก">
-      ${[['board', 'กระดานเคส'], ['stats', 'สถิติ']].concat(p.role === 'admin' ? [['admin', 'ตั้งค่า']] : [])
+      ${[['board', 'กระดานเคส'], ['history', 'ประวัติเคส'], ['stats', 'สถิติ']].concat(p.role === 'admin' ? [['admin', 'ตั้งค่า']] : [])
         .map(([v, l]) => `<button type="button" data-act="nav" data-view="${v}" class="${S.view === v ? 'on' : ''}" ${S.view === v ? 'aria-current="page"' : ''}>${l}</button>`).join('')}
     </nav>`;
   const brand = isDept
@@ -1035,6 +1057,8 @@ function renderShell() {
       <div id="dlist"></div>
       <div id="dclosed" class="stack-sm"></div>`;
     body = `<div id="alarm"></div><main class="wrap main">${tabsHtml}${inner}</main>`;
+  } else if (S.view === 'history') {
+    body = `<main class="wrap main"><section class="stack" id="hist-area" aria-label="ประวัติเคส"></section></main>`;
   } else if (S.view === 'stats') {
     body = `<main class="wrap main" id="stats-area"></main>`;
   } else if (S.view === 'admin') {
@@ -1060,7 +1084,7 @@ function renderShell() {
   if (S.profile.role === 'dept') onDeptsChanged();
   if (S.view === 'board' || (S.view === 'dept' && S.deptTab === 'send')) paintFormChips();
   if (S.view === 'dept' && S.deptTab === 'send') loadPresenceTable(null);
-  if (S.view === 'dept' && S.deptTab === 'hist') { renderHistShell(); loadHistory(); }
+  if ((S.view === 'dept' && S.deptTab === 'hist') || S.view === 'history') { renderHistShell(); loadHistory(); }
   if (S.view === 'stats') loadStats();
   if (S.view === 'admin') loadAdmin();
   render();
@@ -1299,7 +1323,7 @@ function renderDept() {
   const now = Date.now();
   const today = dayKey();
   const every = S.cases.map((c) => view(c, now));
-  const pendingAll = every.filter((c) => c.status === 'pending');
+  const pendingAll = every.filter(ringing);
   const openAll = every.filter((c) => c.status === 'pending' || c.status === 'ack');
   // เสียงเตือนและแถบด้านบนนับทุกแผนกที่ดูแล ส่วนรายการด้านล่างกรองตามแผนกที่เลือก
   renderDeptAlarm(every, pendingAll, openAll, now);
@@ -1357,9 +1381,9 @@ function histDays() {
 function renderHistShell() {
   const area = $('#hist-area'); if (!area) return;
   const h = S.hist;
-  if (h.dept && !myDepts().includes(h.dept)) h.dept = '';
+  if (h.dept && !histScope().includes(h.dept)) h.dept = '';
   area.innerHTML = `
-    <div class="board-head"><div><h2 class="h2">ประวัติเคส</h2><p class="sub">ดูย้อนหลังได้สูงสุด 30 วัน · คลิกที่เคสเพื่อดูรายละเอียด</p></div>
+    <div class="board-head"><div><h2 class="h2">ประวัติเคส${isStaffOp() ? 'ทุกแผนก' : ''}</h2><p class="sub">ดูย้อนหลังได้สูงสุด 30 วัน · ค้นหาด้วยชื่อ เบอร์โทร หรือ HN เมื่อคนไข้โทรมาถาม · คลิกที่เคสเพื่อดูรายละเอียด</p></div>
       <button type="button" class="btn btn-light sm" data-act="hist-export">${ICON.download} ดาวน์โหลด Excel</button></div>
     <div class="glass card hist-ctrl">
       <div class="segbox" role="group" aria-label="ช่วงเวลา">${HIST_RANGES.map(([v, l]) =>
@@ -1367,7 +1391,7 @@ function renderHistShell() {
       ${h.range === 'date' ? `<label class="sr" for="h-date">วันที่</label><input type="date" id="h-date" class="input sm" value="${esc(h.date)}" max="${dayKey()}">` : ''}
       <label class="sr" for="h-q">ค้นหา</label><input id="h-q" class="input sm hist-q" placeholder="ค้นหาชื่อ เบอร์โทร HN หรือเรื่อง" value="${esc(h.q)}" autocomplete="off">
       <label class="sr" for="h-st">สถานะ</label><select id="h-st" class="input sm">${HIST_STATUS.map(([v, l]) => `<option value="${v}" ${h.status === v ? 'selected' : ''}>${l}</option>`).join('')}</select>
-      ${isMulti() ? `<label class="sr" for="h-dept">แผนก</label><select id="h-dept" class="input sm"><option value="">ทุกแผนกที่ดูแล</option>${myDepts().map((d) => `<option value="${esc(d)}" ${h.dept === d ? 'selected' : ''}>${esc(deptName(d))}</option>`).join('')}</select>` : ''}
+      ${showDeptTag() ? `<label class="sr" for="h-dept">แผนก</label><select id="h-dept" class="input sm"><option value="">${isStaffOp() ? 'ทุกแผนก' : 'ทุกแผนกที่ดูแล'}</option>${histScope().map((d) => `<option value="${esc(d)}" ${h.dept === d ? 'selected' : ''}>${esc(deptName(d))}</option>`).join('')}</select>` : ''}
     </div>
     <div id="hist-list" class="stack-sm"></div>`;
 }
@@ -1377,8 +1401,10 @@ async function loadHistory() {
   box.innerHTML = '<div class="empty">กำลังโหลด…</div>';
   const days = histDays();
   try {
-    const snaps = await Promise.all(myDepts().map((d) =>
-      getDocs(query(collection(db, 'cases'), where('deptId', '==', d), where('day', 'in', days)))));
+    const base = collection(db, 'cases');
+    const snaps = isStaffOp()
+      ? [await getDocs(query(base, where('day', 'in', days)))]
+      : await Promise.all(myDepts().map((d) => getDocs(query(base, where('deptId', '==', d), where('day', 'in', days)))));
     if (seq !== S.histSeq) return;
     const m = new Map();
     snaps.forEach((snap) => toMap(snap).forEach((v, k) => m.set(k, v)));
@@ -1400,7 +1426,7 @@ function histFiltered() {
     if (h.status === 'fail' && !['fail', 'wrong'].includes(c.status)) return false;
     if (h.status && !['open', 'fail'].includes(h.status) && c.status !== h.status) return false;
     if (!q) return true;
-    const hay = [c.patientName, c.topic, c.hn, c.note, c.ackEmpId].join(' ').toLowerCase();
+    const hay = [c.patientName, c.topic, c.hn, c.note, c.ackEmpId, c.d.name, c.createdByName].join(' ').toLowerCase();
     return hay.includes(q) || (qd.length >= 3 && String(c.phone || '').replace(/\D/g, '').includes(qd));
   }).sort((a, b) => b.created - a.created);
 }
@@ -1426,7 +1452,7 @@ function histRow(c) {
     <button type="button" class="hrow-h" data-act="toggle-h" data-id="${esc(c.id)}" aria-expanded="${show}">
       <span class="hrow-t">${hm(c.created)}</span>
       <span class="hrow-n">${esc(c.patientName)}${c.urgent ? '<span class="urgent">ด่วน</span>' : ''}</span>
-      ${isMulti() ? `<span class="dtag">${esc(c.d.name)}</span>` : ''}
+      ${showDeptTag() ? `<span class="dtag">${esc(c.d.name)}</span>` : ''}
       <span class="tag-topic">${esc(c.topic || '-')}</span>
       ${c.reportType ? `<span class="tag-warn">รายงานแล้ว</span>` : ''}
       <span class="pill st-${esc(c.status)}">${SHORT[c.status] || esc(c.status)}</span>
@@ -1449,8 +1475,10 @@ function caseDetail(c) {
     ['โทรไม่ติด', c.attempts ? `${c.attempts} ครั้ง` : '-'],
     ['ผลการติดต่อ', esc(STATUS[c.status] || c.status)]
   ];
+  if (isStaffOp()) rows.splice(5, 0, ['เบอร์แผนก', esc(`${c.d.ext || '-'} · ${c.d.building || '-'}`)]);
+  if (c.closedByName && CLOSED.includes(c.status)) rows.push([c.status === 'cancelled' ? 'ยกเลิกโดย' : 'ปิดเคสโดย', esc(c.closedByName)]);
   if (c.reportType) rows.push(['รายงาน', esc(REPORT_TYPES[c.reportType] || c.reportType) + (c.reportToName ? ` → ${esc(c.reportToName)}` : '') + (c.reportNote ? `<br><span class="sub">${esc(c.reportNote)}</span>` : '')]);
-  const canReport = !c.reportType && !['pending', 'cancelled'].includes(c.status);
+  const canReport = !isStaffOp() && !c.reportType && !['pending', 'cancelled'].includes(c.status);
   return `<div class="hdetail">
     <dl class="dl">${rows.map(([k, v]) => `<div><dt>${k}</dt><dd>${v}</dd></div>`).join('')}</dl>
     ${timeline(c, Date.now())}
@@ -1484,7 +1512,16 @@ function deptCard(c, now) {
       ${c.note ? `<div class="pnote" style="border:none;padding:0">${esc(c.note)}</div>` : ''}</div>
     <a class="tel" href="tel:${esc(tel)}">${ICON.phone}<span>${esc(fmtPhone(c.phone))}</span></a>
     ${pending
-      ? `<button type="button" class="btn btn-red btn-xl" data-act="ack" data-id="${esc(c.id)}">รับเรื่อง</button>`
+      ? (canFwd(c)
+        ? `<div class="stack-sm">
+            ${isFwd(c) ? `<div class="sub" style="font-weight:600">ส่งต่อแล้ว · รอ${esc(c.d.name)}รับเรื่องเอง (จอนี้ไม่ส่งเสียง)</div>` : ''}
+            <div class="acts">
+              <button type="button" class="btn btn-red btn-xl" data-act="ack" data-id="${esc(c.id)}">รับเรื่อง</button>
+              ${isFwd(c)
+                ? `<button type="button" class="btn btn-light btn-xl" data-act="unfwd" data-id="${esc(c.id)}">ยกเลิกส่งต่อ</button>`
+                : `<button type="button" class="btn btn-light btn-xl" data-act="fwd" data-id="${esc(c.id)}" title="ปิดเสียงเคสนี้ที่จอนี้ ให้${esc(c.d.name)}รับเรื่องเอง">ส่งต่อ</button>`}
+            </div></div>`
+        : `<button type="button" class="btn btn-red btn-xl" data-act="ack" data-id="${esc(c.id)}">รับเรื่อง</button>`)
       : `<div class="stack-sm">
           <div class="sub">รับเรื่อง ${c.ackMs ? hm(c.ackMs) : ''} · ID ${esc(c.ackEmpId || '-')}</div>
           <div class="acts">
@@ -1625,7 +1662,7 @@ async function submitReport(form) {
 }
 
 function openAck(target) {
-  const pend = S.cases.filter((c) => c.status === 'pending');
+  const pend = S.cases.filter(ringing);
   let sub = '';
   if (target === 'all') sub = `รับเรื่องเคสที่รออยู่ทั้งหมด ${pend.length} ราย`;
   else {
@@ -1651,7 +1688,7 @@ async function submitAck(form) {
   const box = $('#dlg-msg');
   if (!/^[A-Za-z0-9]{3,12}$/.test(emp)) { box.innerHTML = msgHtml('error', 'กรุณากรอกรหัสพนักงานให้ถูกต้อง'); form.emp.focus(); return; }
   const target = S.dialog && S.dialog.target;
-  const ids = target === 'all' ? S.cases.filter((c) => c.status === 'pending').map((c) => c.id) : [target];
+  const ids = target === 'all' ? S.cases.filter(ringing).map((c) => c.id) : [target];
   const btn = form.querySelector('button[type=submit]');
   btn.disabled = true;
   try {
@@ -2213,6 +2250,8 @@ document.addEventListener('click', async (e) => {
     case 'report': openReport(id); break;
     case 'dtab': S.deptTab = el.dataset.v; renderShell(); window.scrollTo(0, 0); break;
     case 'dview': S.deptView = el.dataset.v || ''; renderDept(); break;
+    case 'fwd': S.fwd.add(id); saveFwd(); renderDept(); { const c = S.cases.find((x) => x.id === id); toast('ok', `ส่งต่อแล้ว — รอ${esc(c ? deptName(c.deptId) : 'แผนก')}รับเรื่องเอง`); } break;
+    case 'unfwd': S.fwd.delete(id); saveFwd(); renderDept(); break;
     case 'hist-range': S.hist.range = el.dataset.v; renderHistShell(); loadHistory(); break;
     case 'hist-export': exportHistory(); break;
     case 'toggle-h': { const k = 'h:' + id; if (S.expanded.has(k)) S.expanded.delete(k); else S.expanded.add(k);
