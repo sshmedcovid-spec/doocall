@@ -421,6 +421,7 @@ const PRESENCE_ONLINE_MIN = 7;         // ไม่มีสัญญาณเ�
 // แจ้งเตือนหัวหน้าแผนกทาง LINE (ผ่าน Google Apps Script) — เว้นว่าง = ปิด
 const LINE_ALERT_URL = 'https://script.google.com/macros/s/AKfycby8s8tKiH3C7CD8lvhBFfCzNo5mAQUM2XYzSL9dYBs93sU_EiOI8IxX6zzm85caZjXz/exec';              // วาง URL ของ Web app จาก Apps Script (ลงท้าย /exec)
 const LINE_ALERT_KEY = 'tWasJyNkT9UkmxeE8otEPtEK';  // ต้องตรงกับ APP_KEY ใน Script Properties
+const APP_VERSION = '2026-10-20b';     // เปลี่ยนทุกครั้งที่อัปโหลดไฟล์ใหม่ ทุกจอจะโหลดเวอร์ชันใหม่เอง
 const SHOW_DOO = true;                // แสดงน้องกริ๊งกริ๊ง ที่หน้าแผนก (false = ปิด)
 
 const TOPICS = ['นัดหมาย / เลื่อนนัด', 'สอบถามผลตรวจ', 'สอบถามอาการ / ยา', 'ค่าใช้จ่าย / ประกัน', 'เอกสาร / ใบรับรองแพทย์', 'อื่นๆ'];
@@ -549,7 +550,7 @@ const S = {
   depts: [], deptMap: {}, cases: [], caseMaps: new Map(), fwd: new Set(), users: [], deptView: '', histSeq: 0,
   hist: { range: 'today', date: dayKey(), q: '', status: '', dept: '', rows: [] },
   unsubs: [], caseUnsubs: [], day: dayKey(), escKey: '',
-  tab: 'open', deptFilter: '', form: { topic: '', urgent: false, when: 'auto', at: '08:00' }, allCases: [], heldKey: '', lastMin: -1,
+  tab: 'open', deptFilter: '', form: { topic: '', urgent: false, when: 'auto', at: '08:00' }, allCases: [], heldKey: '', lastMin: -1, verAt: Date.now(), newVer: false,
   showClosed: false, expanded: new Set(), staffRows: [], presence: {}, sent: [], deptTab: 'in', lineTried: new Set(), statsRange: 'today', statsFrom: dayKey(), statsTo: dayKey(),
   audio: null, lastRing: 0, soundState: '', netState: '', dialog: null, editDeptId: null
 };
@@ -888,7 +889,7 @@ function showSysError(err) {
   const box = $('#sys');
   if (box) box.innerHTML = msgHtml('error', thaiErr(err));
 }
-function clearSysError() { const box = $('#sys'); if (box) box.innerHTML = ''; }
+function clearSysError() { if (S.newVer) return; const box = $('#sys'); if (box) box.innerHTML = ''; }
 
 /* ---------- shared ---------- */
 function view(c, now) {
@@ -964,6 +965,7 @@ function tick() {
     const hk = S.allCases.filter((c) => isHeld(c, now)).map((c) => c.id).sort().join(',');
     if (hk !== S.heldKey) { applyHeld(); render(); }
   }
+  if (now - S.verAt > 5 * 60000) { S.verAt = now; checkVersion(); }
   const mn = Math.floor(now / 60000);
   if (mn !== S.lastMin) { S.lastMin = mn; if ($('#f-sched')) paintSched(); }
   if (escKeyNow(now) !== S.escKey) render();
@@ -982,6 +984,28 @@ function tick() {
     if (n && now - S.lastRing >= RING_EVERY_MS) { S.lastRing = now; beep(); }
   }
 }
+
+/* ---------- อัปเดตเวอร์ชันอัตโนมัติ ----------
+   ทุก 5 นาที ตรวจว่ามี index.html ใหม่บน GitHub ไหม ถ้ามีและไม่ได้กรอกข้อมูลค้างอยู่ จะโหลดหน้าใหม่เอง
+   (กันจอที่ไม่ได้กด Ctrl+Shift+R ทำงานด้วยโค้ดเก่า) */
+async function checkVersion() {
+  try {
+    const r = await fetch(`${location.pathname}?v=${Date.now()}`, { cache: 'no-store' });
+    if (!r.ok) return;
+    const m = /const APP_VERSION = '([^']+)'/.exec(await r.text());
+    if (m && m[1] !== APP_VERSION) onNewVersion();
+  } catch (e) { /* ออฟไลน์ ลองใหม่รอบหน้า */ }
+}
+function onNewVersion() {
+  S.newVer = true;
+  const busy = !!S.dialog || ['f-name', 'f-phone', 'f-hn', 'f-note', 'h-q'].some((id) => { const el = $('#' + id); return el && el.value.trim(); });
+  if (!busy) { location.reload(); return; }
+  const box = $('#sys');
+  if (box && !box.querySelector('[data-act=reload]')) box.innerHTML = `<div class="msg info">มี DOOCALL เวอร์ชันใหม่ <button type="button" class="btn btn-primary sm" style="margin-left:8px" data-act="reload">โหลดเวอร์ชันใหม่</button></div>`;
+}
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState === 'visible' && S.profile && Date.now() - S.verAt > 60000) { S.verAt = Date.now(); checkVersion(); }
+});
 
 function paintNet() {
   const el = $('#net'); if (!el) return;
@@ -2155,6 +2179,8 @@ async function sendLineAlert(id) {
     if (!snap.exists()) return null;
     const c = snap.data();
     if (c.status !== 'pending' || c.lineNotifiedAt) return null;
+    const start = tms(c.releaseAt) || tms(c.createdAt) || Date.now();
+    if (Date.now() - start < ESCALATE_MIN * 60000) return null; // เคสตั้งเวลา: ยังไม่ถึงเวลาแจ้ง
     tx.update(ref, { lineNotifiedAt: serverTimestamp() });
     return c;
   });
@@ -2366,6 +2392,7 @@ document.addEventListener('click', async (e) => {
   switch (act) {
     case 'nav': S.view = el.dataset.view; renderShell(); break;
     case 'logout': await signOut(auth); break;
+    case 'reload': location.reload(); break;
     case 'chg-pw': openPwDialog(); break;
     case 'dlg-close': closeDialog(); break;
     case 'topic': S.form.topic = S.form.topic === el.dataset.v ? '' : el.dataset.v; paintFormChips(); break;
