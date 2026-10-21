@@ -421,7 +421,7 @@ const PRESENCE_ONLINE_MIN = 7;         // ไม่มีสัญญาณเ�
 // แจ้งเตือนหัวหน้าแผนกทาง LINE (ผ่าน Google Apps Script) — เว้นว่าง = ปิด
 const LINE_ALERT_URL = 'https://script.google.com/macros/s/AKfycby8s8tKiH3C7CD8lvhBFfCzNo5mAQUM2XYzSL9dYBs93sU_EiOI8IxX6zzm85caZjXz/exec';              // วาง URL ของ Web app จาก Apps Script (ลงท้าย /exec)
 const LINE_ALERT_KEY = 'tWasJyNkT9UkmxeE8otEPtEK';  // ต้องตรงกับ APP_KEY ใน Script Properties
-const APP_VERSION = '2026-10-20b';     // เปลี่ยนทุกครั้งที่อัปโหลดไฟล์ใหม่ ทุกจอจะโหลดเวอร์ชันใหม่เอง
+const APP_VERSION = '2026-10-21a';     // เปลี่ยนทุกครั้งที่อัปโหลดไฟล์ใหม่ ทุกจอจะโหลดเวอร์ชันใหม่เอง
 const SHOW_DOO = true;                // แสดงน้องกริ๊งกริ๊ง ที่หน้าแผนก (false = ปิด)
 
 const TOPICS = ['นัดหมาย / เลื่อนนัด', 'สอบถามผลตรวจ', 'สอบถามอาการ / ยา', 'ค่าใช้จ่าย / ประกัน', 'เอกสาร / ใบรับรองแพทย์', 'อื่นๆ'];
@@ -2135,7 +2135,8 @@ function notifyNewCase(d) {
 function checkLineAlerts(now) {
   const esc = S.cases.filter((c) => c.status === 'pending' && !c.lineNotifiedAt
     && now - (startMs(c) ?? now) >= ESCALATE_MIN * 60000 && !S.lineTried.has(c.id));
-  esc.forEach((c) => { S.lineTried.add(c.id); sendLineAlert(c.id).catch((e) => console.warn('LINE alert', e)); });
+  // ถ้าส่งไม่สำเร็จ (เน็ตหลุด ฯลฯ) ให้ลองใหม่รอบถัดไป · ตัวเฝ้าระบบใน Apps Script เป็นตัวหลักอีกชั้น
+  esc.forEach((c) => { S.lineTried.add(c.id); sendLineAlert(c.id).catch((e) => { S.lineTried.delete(c.id); console.warn('LINE alert', e); }); });
 }
 
 // แผนกที่เปิด "แจ้ง LINE ทันที": เคสตั้งเวลาแจ้งตอนถึงเวลาส่ง (กันส่งซ้ำด้วย lineNewAt)
