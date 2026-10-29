@@ -268,20 +268,60 @@ textarea.input{height:auto;padding:10px 14px;resize:vertical}
 .hsum .chip-n{display:inline-flex;gap:6px;align-items:center;padding:6px 12px;border-radius:99px;background:rgba(255,255,255,.75);border:1px solid #fff;font-size:14px;font-weight:600;color:var(--ink2)}
 .hday{font-family:'Prompt',sans-serif;font-weight:600;font-size:15px;color:var(--ink2);margin:8px 4px 0}
 .hbox{border-radius:18px;overflow:hidden}
-.hrow{border-bottom:1px solid var(--gray-l)}
+.hrow{border-bottom:1px solid var(--gray-l);border-left:4px solid transparent}
 .hrow:last-child{border-bottom:none}
-.hrow-h{all:unset;box-sizing:border-box;display:flex;align-items:center;gap:12px;flex-wrap:wrap;width:100%;padding:13px 20px;cursor:pointer}
+.hrow.t-done{border-left-color:#16A34A}.hrow.t-fail,.hrow.t-wrong{border-left-color:#E8A33D}.hrow.t-cancelled{border-left-color:#A3AEC2}
+.hrow.t-pending{border-left-color:var(--red)}.hrow.t-ack{border-left-color:#F59E0B}.hrow.t-held{border-left-color:#7C3AED}
+.hrow-h{all:unset;box-sizing:border-box;display:grid;grid-template-columns:62px minmax(0,1fr) auto 16px;gap:14px;align-items:center;width:100%;padding:12px 18px 12px 14px;cursor:pointer}
 .hrow-h:hover{background:rgba(37,99,235,.05)}
 .hrow-h:focus-visible{outline:3px solid var(--blue);outline-offset:-3px}
-.hrow-t{font-weight:600;color:var(--muted);min-width:46px;font-variant-numeric:tabular-nums}
-.hrow-n{font-weight:600;flex:1;min-width:140px;display:flex;gap:8px;align-items:center}
+.hr-time{display:flex;flex-direction:column;line-height:1.2}
+.hr-time b{font-size:16px;font-variant-numeric:tabular-nums;color:var(--ink)}
+.hr-time em{font-style:normal;font-size:11px;font-weight:600;color:#6D28D9}
+.hr-main{display:flex;flex-direction:column;gap:3px;min-width:0}
+.hr-name{font-weight:600;font-size:16px;display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.hr-meta{font-size:13px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.hr-meta b{color:var(--blue-d);font-weight:600}
+.hr-flag{font-size:12px;padding:2px 8px;border-radius:99px;background:#FEF3C7;color:#92400E;font-weight:600}
+.hr-status{display:flex;flex-direction:column;align-items:flex-end;gap:3px}
+.hr-by{font-size:12px;color:var(--muted);font-variant-numeric:tabular-nums}
 .chev{color:var(--muted);font-size:13px}
-.hrow.open{background:rgba(239,246,255,.6)}
-.hdetail{padding:2px 20px 18px;display:flex;flex-direction:column;gap:14px}
-.dl{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:10px 24px;margin:0}
-.dl dt{font-size:13px;color:var(--muted)}
-.dl dd{margin:2px 0 0;font-weight:500;word-break:break-word}
-.dl a{color:var(--blue-d);font-weight:600;text-decoration:none}
+.hrow.open{background:rgba(239,246,255,.65)}
+.hdetail{padding:2px 18px 18px 14px;display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:12px}
+@media (max-width:820px){.hdetail{grid-template-columns:1fr}.hrow-h{grid-template-columns:52px minmax(0,1fr) auto}.hrow-h .chev{display:none}}
+.hd-sum{grid-column:1/-1;display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:10px 14px;border-radius:12px;font-weight:600;font-size:15px}
+.hd-sum .s{font-weight:500;font-size:13px;opacity:.85}
+.hd-sum.ok{background:#ECFDF3;color:#166534}.hd-sum.warn{background:#FFF7E8;color:#92400E}
+.hd-sum.gray{background:#F1F4F9;color:#475569}.hd-sum.open{background:#FEF2F2;color:#991B1B}.hd-sum.held{background:#F5F3FF;color:#5B21B6}
+.hd-card{background:#fff;border:1px solid var(--gray-l);border-radius:16px;padding:14px 16px;display:flex;flex-direction:column;gap:10px;min-width:0}
+.hd-h{font-size:12px;font-weight:700;color:var(--muted);letter-spacing:.3px}
+.hd-phone{font-size:20px;font-weight:700;color:var(--blue-d);text-decoration:none;display:inline-flex;gap:8px;align-items:center;align-self:flex-start}
+.hd-dl{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px 16px;margin:0}
+.hd-dl dt{font-size:12px;color:var(--muted)}
+.hd-dl dd{margin:1px 0 0;font-weight:600;font-size:14px;word-break:break-word}
+.hd-note{background:#F5F8FF;border-radius:10px;padding:8px 12px;font-size:14px;color:var(--ink2)}
+.hd-note b{display:block;font-size:12px;color:var(--muted);font-weight:600;margin-bottom:2px}
+.vtl{list-style:none;margin:0;padding:0;display:flex;flex-direction:column}
+.vtl li{display:grid;grid-template-columns:48px 14px minmax(0,1fr);gap:10px;position:relative;padding-bottom:12px}
+.vtl li:last-child{padding-bottom:0}
+.vtl li:not(:last-child)::after{content:"";position:absolute;left:67px;top:17px;bottom:-1px;width:2px;background:#CFE0FF}
+.vtl .tm{font-weight:700;font-variant-numeric:tabular-nums;text-align:right;font-size:14px}
+.vtl .dt{width:12px;height:12px;border-radius:50%;background:var(--blue);margin-top:4px;box-shadow:0 0 0 3px #EAF1FF}
+.vtl .lb{font-weight:600;font-size:14px}
+.vtl .sb{font-size:12.5px;color:var(--muted)}
+.vtl li.wait .dt{background:#fff;border:2px solid #F59E0B;width:8px;height:8px}
+.vtl li.wait .tm{color:var(--muted)}
+.vtl li.call .dt{background:#7C3AED;box-shadow:0 0 0 3px #F1EBFF}
+.vtl li.end .dt{background:#16A34A;box-shadow:0 0 0 3px #E3F7EA}
+.vtl li.end.x .dt{background:#E8A33D;box-shadow:0 0 0 3px #FFF1D9}
+.vtl li.end.c .dt{background:#A3AEC2;box-shadow:0 0 0 3px #EEF1F6}
+.hd-report{grid-column:1/-1;background:#FFFBEB;border:1px solid #FDE68A;border-radius:12px;padding:10px 14px;font-size:14px;color:#78350F}
+.hd-report b{color:#92400E}
+.hd-foot{grid-column:1/-1;display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap}
+.emp-name{min-height:22px;font-size:14px;font-weight:600}
+.emp-name.ok{color:#15803D}.emp-name.no{color:#B45309}
+.staff-tools{display:flex;flex-wrap:wrap;gap:10px;align-items:center}
+.staff-paste{width:100%;min-height:120px;font-family:ui-monospace,Menlo,Consolas,monospace;font-size:13px}
 .dep-checks{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px 14px;max-height:340px;overflow:auto}
 .dep-checks label{display:flex;gap:8px;align-items:center;font-size:15px;cursor:pointer;min-height:34px}
 
@@ -421,7 +461,7 @@ const PRESENCE_ONLINE_MIN = 7;         // ไม่มีสัญญาณเ�
 // แจ้งเตือนหัวหน้าแผนกทาง LINE (ผ่าน Google Apps Script) — เว้นว่าง = ปิด
 const LINE_ALERT_URL = 'https://script.google.com/macros/s/AKfycby8s8tKiH3C7CD8lvhBFfCzNo5mAQUM2XYzSL9dYBs93sU_EiOI8IxX6zzm85caZjXz/exec';              // วาง URL ของ Web app จาก Apps Script (ลงท้าย /exec)
 const LINE_ALERT_KEY = 'tWasJyNkT9UkmxeE8otEPtEK';  // ต้องตรงกับ APP_KEY ใน Script Properties
-const APP_VERSION = '2026-10-21a';     // เปลี่ยนทุกครั้งที่อัปโหลดไฟล์ใหม่ ทุกจอจะโหลดเวอร์ชันใหม่เอง
+const APP_VERSION = '2026-10-29c';     // เปลี่ยนทุกครั้งที่อัปโหลดไฟล์ใหม่ ทุกจอจะโหลดเวอร์ชันใหม่เอง
 const SHOW_DOO = true;                // แสดงน้องกริ๊งกริ๊ง ที่หน้าแผนก (false = ปิด)
 
 const TOPICS = ['นัดหมาย / เลื่อนนัด', 'สอบถามผลตรวจ', 'สอบถามอาการ / ยา', 'ค่าใช้จ่าย / ประกัน', 'เอกสาร / ใบรับรองแพทย์', 'อื่นๆ'];
@@ -550,7 +590,7 @@ const S = {
   depts: [], deptMap: {}, cases: [], caseMaps: new Map(), fwd: new Set(), users: [], deptView: '', histSeq: 0,
   hist: { range: 'today', date: dayKey(), q: '', status: '', dept: '', rows: [] },
   unsubs: [], caseUnsubs: [], day: dayKey(), escKey: '',
-  tab: 'open', deptFilter: '', form: { topic: '', urgent: false, when: 'auto', at: '08:00' }, allCases: [], heldKey: '', lastMin: -1, verAt: Date.now(), newVer: false,
+  tab: 'open', deptFilter: '', form: { topic: '', urgent: false, when: 'auto', at: '08:00' }, staff: new Map(), staffAt: 0, staffImport: null, staffQ: '', allCases: [], heldKey: '', lastMin: -1, verAt: Date.now(), newVer: false,
   showClosed: false, expanded: new Set(), staffRows: [], presence: {}, sent: [], deptTab: 'in', lineTried: new Set(), statsRange: 'today', statsFrom: dayKey(), statsTo: dayKey(),
   audio: null, lastRing: 0, soundState: '', netState: '', dialog: null, editDeptId: null
 };
@@ -702,7 +742,7 @@ function dooCelebrate(emp, n) {
   let box = document.getElementById('doo-pop');
   if (!box) { box = document.createElement('div'); box.id = 'doo-pop'; document.body.appendChild(box); }
   box.innerHTML = `<div class="doo-pop" role="status">${dooSvg('thanks', 150)}
-    <div class="doo-pop-t">ขอบคุณค่ะ ID ${esc(emp)} 💙</div>
+    <div class="doo-pop-t">ขอบคุณค่ะ ${esc(emp)} 💙</div>
     <div class="doo-pop-s">${n > 1 ? `รับเรื่องแล้ว ${n} เคส · ` : ''}แผนกรับเรื่องแล้ว ใครในทีมโทรกลับก็ได้</div></div>`;
   clearTimeout(S.dooTimer);
   S.dooTimer = setTimeout(() => { box.innerHTML = ''; }, 5000);
@@ -734,6 +774,7 @@ async function handleAuth(user) {
     S.user = user;
     S.profile = { uid: user.uid, ...snap.data() };
     loadFwd();
+    loadStaffNames(true);
     if (S.profile.role === 'dept' && !S.profile.dept) {
       await signOut(auth);
       renderLogin('บัญชีแผนกนี้ยังไม่ได้ผูกกับแผนก กรุณาติดต่อผู้ดูแลระบบ');
@@ -829,8 +870,15 @@ function subscribeCases() {
       listen('open:' + d, query(base, where('deptId', '==', d), where('status', 'in', OPEN)));
     });
     if (S.profile.canSend) {
-      S.caseUnsubs.push(onSnapshot(query(base, where('createdByUid', '==', S.user.uid), where('day', '==', S.day)),
-        (snap) => { S.sent = [...toMap(snap).values()]; render(); }, showSysError));
+      // เคสที่ส่งวันนี้ + เคสที่ยังไม่ปิด (รวมเคสรอส่งตอนเช้า ซึ่งนับเป็นวันที่ส่งถึงแผนก)
+      const sentMaps = {};
+      const onSent = (k) => (snap) => {
+        sentMaps[k] = toMap(snap);
+        const m = new Map(); Object.values(sentMaps).forEach((x) => x.forEach((v, id) => m.set(id, v)));
+        S.sent = [...m.values()]; render();
+      };
+      S.caseUnsubs.push(onSnapshot(query(base, where('createdByUid', '==', S.user.uid), where('day', '==', S.day)), onSent('today'), showSysError));
+      S.caseUnsubs.push(onSnapshot(query(base, where('createdByUid', '==', S.user.uid), where('status', 'in', OPEN)), onSent('open'), showSysError));
     }
   } else {
     listen('today', query(base, where('day', '==', S.day)));
@@ -907,6 +955,28 @@ const isStaffOp = () => !!S.profile && S.profile.role !== 'dept';
 // แผนกที่ดูประวัติได้: Operator/Admin = ทุกแผนก, บัญชีแผนก = แผนกที่ดูแล
 const histScope = () => (isStaffOp() ? S.depts.map((d) => d.id) : myDepts());
 const showDeptTag = () => isStaffOp() || isMulti();
+/* ---------- รายชื่อพนักงาน (staff/{รหัส}) ----------
+   พนักงานพิมพ์รหัสเหมือนเดิม ระบบแสดงชื่อ และบันทึกชื่อลงในเคสตอนรับเรื่อง/รายงาน */
+async function loadStaffNames(force) {
+  if (!force && S.staffAt && Date.now() - S.staffAt < 30 * 60000) return;
+  try {
+    const snap = await getDocs(collection(db, 'staff'));
+    const m = new Map();
+    snap.docs.forEach((d) => { const x = d.data(); if (x.active !== false && x.name) m.set(d.id, { name: x.name, dept: x.dept || '' }); });
+    S.staff = m; S.staffAt = Date.now();
+  } catch (e) { console.warn('staff', e); }
+}
+const staffName = (id) => { const r = id && S.staff.get(String(id).trim()); return r ? r.name : ''; };
+// "สมศรี ใจดี (540801)" — ใช้ชื่อที่บันทึกในเคสก่อน ถ้าไม่มีค่อยค้นจากรายชื่อปัจจุบัน
+const empLabel = (id, saved) => { if (!id) return '-'; const n = saved || staffName(id); return n ? `${n} (${id})` : `ID ${id}`; };
+function paintEmpName(inputId, outId) {
+  const i = $('#' + inputId), o = $('#' + outId); if (!i || !o) return;
+  const v = i.value.trim();
+  const n = staffName(v);
+  if (n) { o.className = 'emp-name ok'; o.textContent = `✓ ${n}`; }
+  else if (v.length >= 6) { o.className = 'emp-name no'; o.textContent = 'ไม่พบรหัสนี้ในรายชื่อ — รับได้ แต่จะไม่แสดงชื่อ'; }
+  else { o.className = 'emp-name'; o.textContent = ''; }
+}
 /* ---------- เวลาทำการแผนก / ส่งตามเวลา ----------
    เคสที่ตั้งเวลา (releaseAt) จะยังไม่ขึ้นที่จอแผนก ไม่มีเสียง และยังไม่นับเวลารอ จนถึงเวลาส่ง
    ไม่ต้องมีใครกดส่ง: ทุกจอคำนวณเองจาก releaseAt */
@@ -1112,7 +1182,7 @@ function renderShell() {
     let inner;
     if (t === 'send') inner = `<div class="layout">
         <section class="glass card form-card" aria-labelledby="form-title">${formHtml()}</section>
-        <section class="stack" style="min-width:0"><h2 class="h2">เคสที่ส่งวันนี้</h2><div id="sent-list"></div>
+        <section class="stack" style="min-width:0"><h2 class="h2">เคสที่ส่ง</h2><p class="sub" style="margin-top:-8px">วันนี้ และเคสที่ยังไม่ปิด รวมเคสที่รอส่งตอนแผนกเปิด</p><div id="sent-list"></div>
           <div class="glass card stack-sm">
             <div class="board-head"><div><h2 class="h2" style="font-size:18px">สถานะหน้าจอแผนก</h2><p class="sub">แผนกที่จอไม่ได้เปิดจะไม่ได้ยินเสียงเตือน ควรโทรแจ้งด้วย</p></div>
               <button type="button" class="btn btn-light sm" data-act="presence-load">ตรวจสอบตอนนี้</button></div>
@@ -1399,7 +1469,7 @@ function escCard(c) {
 
 function opCard(c) {
   const open = OPEN.includes(c.status);
-  const who = [shortName(c.createdByName), c.ackEmpId ? `ID ${c.ackEmpId}` : ''].filter(Boolean).join(' → ');
+  const who = [shortName(c.createdByName), c.ackEmpId ? empLabel(c.ackEmpId, c.ackEmpName) : ''].filter(Boolean).join(' → ');
   const show = S.expanded.has(c.id);
   return `<article class="case glass s-${esc(c.status)} clickable${show ? ' expanded' : ''}" data-act="toggle-tl" data-id="${esc(c.id)}"
       tabindex="0" title="คลิกเพื่อ${show ? 'ซ่อน' : 'ดู'}รายละเอียดเวลา">
@@ -1539,7 +1609,7 @@ function histFiltered() {
     if (h.status === 'fail' && !['fail', 'wrong'].includes(c.status)) return false;
     if (h.status && !['open', 'fail'].includes(h.status) && c.status !== h.status) return false;
     if (!q) return true;
-    const hay = [c.patientName, c.topic, c.hn, c.note, c.ackEmpId, c.d.name, c.createdByName].join(' ').toLowerCase();
+    const hay = [c.patientName, c.topic, c.hn, c.note, c.ackEmpId, c.ackEmpName || staffName(c.ackEmpId), c.d.name, c.createdByName].join(' ').toLowerCase();
     return hay.includes(q) || (qd.length >= 3 && String(c.phone || '').replace(/\D/g, '').includes(qd));
   }).sort((a, b) => b.created - a.created);
 }
@@ -1559,17 +1629,21 @@ function paintHistory() {
   box.innerHTML = sum + groups.map((g) => `<div class="hday">${esc(thaiDate(g.day))} · ${g.items.length} เคส</div>
     <div class="glass hbox">${g.items.map(histRow).join('')}</div>`).join('');
 }
+const minText = (ms) => { const sec = Math.max(0, Math.round(ms / 1000)); if (sec < 60) return `${sec} วินาที`; const m = Math.round(sec / 60); return m < 60 ? `${m} นาที` : `${Math.floor(m / 60)} ชม. ${m % 60} นาที`; };
+const absTime = (ms) => (ms ? `${new Date(ms).toLocaleDateString('th-TH', { day: 'numeric', month: 'short' })} ${hm(ms)}` : '-');
 function histRow(c) {
   const show = S.expanded.has('h:' + c.id);
-  return `<div class="hrow${show ? ' open' : ''}">
+  const held = isHeld(c);
+  const meta = [showDeptTag() ? `<b>${esc(c.d.name)}</b>` : '', esc(c.topic || 'อื่นๆ'), c.hn ? `HN ${esc(c.hn)}` : ''].filter(Boolean).join(' · ');
+  return `<div class="hrow t-${held ? 'held' : esc(c.status)}${show ? ' open' : ''}">
     <button type="button" class="hrow-h" data-act="toggle-h" data-id="${esc(c.id)}" aria-expanded="${show}">
-      <span class="hrow-t">${hm(c.created)}</span>
-      <span class="hrow-n">${esc(c.patientName)}${c.urgent ? '<span class="urgent">ด่วน</span>' : ''}</span>
-      ${showDeptTag() ? `<span class="dtag">${esc(c.d.name)}</span>` : ''}
-      <span class="tag-topic">${esc(c.topic || '-')}</span>
-      ${c.reportType ? `<span class="tag-warn">รายงานแล้ว</span>` : ''}
-      ${c.scheduled ? '<span class="tag-topic" style="background:#EDE9FE;color:#5B21B6">นอกเวลา</span>' : ''}
-      ${isHeld(c) ? `<span class="pill st-held">รอส่ง ${hm(c.releaseMs)}</span>` : `<span class="pill st-${esc(c.status)}">${SHORT[c.status] || esc(c.status)}</span>`}
+      <span class="hr-time"><b>${hm(c.created)}</b>${c.scheduled ? '<em>นอกเวลา</em>' : ''}</span>
+      <span class="hr-main">
+        <span class="hr-name">${esc(c.patientName)}${c.urgent ? '<span class="urgent">ด่วน</span>' : ''}${c.reportType ? '<span class="hr-flag">รายงานแล้ว</span>' : ''}</span>
+        <span class="hr-meta">${meta}</span>
+      </span>
+      <span class="hr-status">${held ? `<span class="pill st-held">รอส่ง ${hm(c.releaseMs)}</span>` : `<span class="pill st-${esc(c.status)}">${SHORT[c.status] || esc(c.status)}</span>`}
+        ${c.ackEmpId ? `<span class="hr-by">${esc(c.ackEmpName || staffName(c.ackEmpId) || 'ID ' + c.ackEmpId)}</span>` : ''}</span>
       <span class="chev" aria-hidden="true">${show ? '▴' : '▾'}</span>
     </button>
     ${show ? caseDetail(c) : ''}
@@ -1577,36 +1651,54 @@ function histRow(c) {
 }
 function caseDetail(c) {
   const tel = String(c.phone || '').replace(/[^0-9+]/g, '');
+  const held = isHeld(c);
   const sender = c.senderDeptName ? `${c.senderDeptName}${c.createdByName && c.createdByName !== c.senderDeptName ? ` (${c.createdByName})` : ''}` : (c.createdByName || '-');
-  const rows = [
-    ['เบอร์โทรคนไข้', c.masked ? esc(c.phone || '-') : `<a href="tel:${esc(tel)}">${esc(fmtPhone(c.phone))}</a>`],
-    ['HN', esc(c.hn || '-')],
-    ['เรื่องที่ติดต่อ', esc(c.topic || '-') + (c.urgent ? ' · <b style="color:var(--red)">ด่วน</b>' : '')],
-    ['รายละเอียด', c.note ? esc(c.note) : '-'],
-    ['แผนก', esc(c.d.name)],
-    ['ผู้ฝากเคส', esc(sender)],
-    ['ผู้รับเรื่อง', c.ackEmpId ? `ID ${esc(c.ackEmpId)}` : '-'],
-    ['โทรไม่ติด', c.attempts ? `${c.attempts} ครั้ง` : '-'],
-    ['ผลการติดต่อ', esc(STATUS[c.status] || c.status)]
-  ];
-  if (isStaffOp()) rows.splice(5, 0, ['เบอร์แผนก', esc(`${c.d.ext || '-'} · ${c.d.building || '-'}`)]);
-  if (c.scheduled) rows.push(['รับสาย (นอกเวลา)', c.createdMs ? esc(whenLabel(c.createdMs)) : '-'], ['ส่งถึงแผนก', c.releaseMs ? esc(whenLabel(c.releaseMs)) : '-']);
-  if (c.closedByName && CLOSED.includes(c.status)) rows.push([c.status === 'cancelled' ? 'ยกเลิกโดย' : 'ปิดเคสโดย', esc(c.closedByName)]);
-  if (c.reportType) rows.push(['รายงาน', esc(REPORT_TYPES[c.reportType] || c.reportType) + (c.reportToName ? ` → ${esc(c.reportToName)}` : '') + (c.reportNote ? `<br><span class="sub">${esc(c.reportNote)}</span>` : '')]);
+  // สรุปผลบรรทัดเดียว
+  const total = c.closedMs ? minText(c.closedMs - c.created) : '';
+  const sum = held ? ['held', `รอส่งถึงแผนก ${absTime(c.releaseMs)}`, 'แผนกยังไม่เห็นเคสนี้จนถึงเวลาส่ง']
+    : c.status === 'done' ? ['ok', `✓ ${STATUS.done}`, total ? `ใช้เวลารวม ${total} ตั้งแต่${c.scheduled ? 'ส่งถึงแผนก' : 'ฝากเคส'}จนปิดเคส` : '']
+    : c.status === 'fail' || c.status === 'wrong' ? ['warn', STATUS[c.status], c.attempts ? `โทรไม่ติด ${c.attempts} ครั้ง` : '']
+    : c.status === 'cancelled' ? ['gray', STATUS.cancelled, c.closedByName ? `โดย ${c.closedByName}` : '']
+    : c.status === 'ack' ? ['open', 'รับเรื่องแล้ว · รอโทรกลับ', '']
+    : ['open', 'ยังไม่มีผู้รับเรื่อง', ''];
+  // ลำดับเวลา
+  const st = [];
+  if (c.scheduled && c.createdMs) st.push(['', c.createdMs, 'รับสาย', 'นอกเวลาทำการ · ' + absTime(c.createdMs)]);
+  st.push(['', c.created, c.scheduled ? 'ส่งถึงแผนก' : 'ฝากเคส', `โดย ${sender}`]);
+  if (c.ackMs) st.push(['', c.ackMs, 'รับเรื่อง', `${empLabel(c.ackEmpId, c.ackEmpName)}${typeof c.ackSeconds === 'number' ? ` · รอ ${minText(c.ackSeconds * 1000)}` : ''}`]);
+  else if (c.status === 'pending') st.push(['wait', null, 'รับเรื่อง', held ? 'ยังไม่ถึงเวลาส่ง' : 'ยังไม่มีผู้รับเรื่อง']);
+  if (c.callMs) st.push(['call', c.callMs, 'โทรกลับ', `${typeof c.callSeconds === 'number' ? `หลังรับเรื่อง ${minText(c.callSeconds * 1000)}` : ''}${c.attempts ? `${c.callSeconds != null ? ' · ' : ''}โทรไม่ติด ${c.attempts} ครั้ง` : ''}`]);
+  else if (c.status === 'ack') st.push(['wait', null, 'โทรกลับ', c.attempts ? `โทรไม่ติด ${c.attempts} ครั้ง` : 'รอโทร']);
+  if (c.closedMs) st.push([`end${c.status === 'cancelled' ? ' c' : c.status === 'done' ? '' : ' x'}`, c.closedMs,
+    c.status === 'cancelled' ? 'ยกเลิก' : 'ปิดเคส', `${SHORT[c.status] || ''}${c.closedByName ? ` · โดย ${c.closedByName}` : ''}`]);
   const canReport = !isStaffOp() && !c.reportType && !['pending', 'cancelled'].includes(c.status);
   return `<div class="hdetail">
-    <dl class="dl">${rows.map(([k, v]) => `<div><dt>${k}</dt><dd>${v}</dd></div>`).join('')}</dl>
-    ${timeline(c, Date.now())}
-    <div class="row-w" style="justify-content:space-between"><span class="sub">วันที่ฝาก ${esc(thaiDate(c.day))}</span>${canReport ? reportBtn(c) : ''}</div>
+    <div class="hd-sum ${sum[0]}">${esc(sum[1])}${sum[2] ? `<span class="s">${esc(sum[2])}</span>` : ''}</div>
+    <div class="hd-card"><div class="hd-h">ข้อมูลคนไข้</div>
+      ${c.masked ? `<span class="hd-phone">${esc(c.phone || '-')}</span>` : `<a class="hd-phone" href="tel:${esc(tel)}">${ICON.phone}${esc(fmtPhone(c.phone))}</a>`}
+      <dl class="hd-dl">
+        <div><dt>HN</dt><dd>${esc(c.hn || '-')}</dd></div>
+        <div><dt>เรื่องที่ติดต่อ</dt><dd>${esc(c.topic || '-')}${c.urgent ? ' · <span style="color:var(--red)">ด่วน</span>' : ''}</dd></div>
+        <div><dt>แผนก</dt><dd>${esc(c.d.name)}${isStaffOp() && c.d.ext ? `<br><span class="sub">ต่อ ${esc(c.d.ext)}</span>` : ''}</dd></div>
+        <div><dt>ผู้ฝากเคส</dt><dd>${esc(sender)}</dd></div>
+      </dl>
+      ${c.note ? `<div class="hd-note"><b>รายละเอียด</b>${esc(c.note)}</div>` : ''}
+    </div>
+    <div class="hd-card"><div class="hd-h">ลำดับเวลา · ${esc(thaiDate(c.day))}</div>
+      <ol class="vtl">${st.map(([cls, ms, lb, sb]) => `<li class="${cls}"><span class="tm">${ms ? hm(ms) : '–'}</span><span class="dt"></span>
+        <span><span class="lb">${lb}</span>${sb ? `<br><span class="sb">${esc(sb)}</span>` : ''}</span></li>`).join('')}</ol>
+    </div>
+    ${c.reportType ? `<div class="hd-report"><b>รายงาน: ${esc(REPORT_TYPES[c.reportType] || c.reportType)}${c.reportToName ? ` → ${esc(c.reportToName)}` : ''}</b>${c.reportNote ? ` · ${esc(c.reportNote)}` : ''}${c.reportEmpId ? ` <span class="sub">(${esc(empLabel(c.reportEmpId, c.reportEmpName))})</span>` : ''}</div>` : ''}
+    ${canReport ? `<div class="hd-foot"><span></span>${reportBtn(c)}</div>` : ''}
   </div>`;
 }
 function exportHistory() {
   const list = histFiltered();
   if (!list.length) { toast('error', 'ไม่มีข้อมูลให้ดาวน์โหลด'); return; }
   const t = (ms) => (ms ? hms(ms) : '');
-  const lines = [['วันที่', 'เวลาส่งถึงแผนก', 'แผนก', 'ชื่อคนไข้', 'เบอร์โทร', 'HN', 'เรื่อง', 'รายละเอียด', 'ด่วน', 'ผู้ฝาก', 'รับเรื่อง', 'ID ผู้รับเรื่อง', 'โทรครั้งแรก', 'ปิดเคส', 'โทรไม่ติด (ครั้ง)', 'ผล', 'นอกเวลาทำการ', 'รายงาน']]
+  const lines = [['วันที่', 'เวลาส่งถึงแผนก', 'แผนก', 'ชื่อคนไข้', 'เบอร์โทร', 'HN', 'เรื่อง', 'รายละเอียด', 'ด่วน', 'ผู้ฝาก', 'รับเรื่อง', 'ID ผู้รับเรื่อง', 'ชื่อผู้รับเรื่อง', 'โทรครั้งแรก', 'ปิดเคส', 'โทรไม่ติด (ครั้ง)', 'ผล', 'นอกเวลาทำการ', 'รายงาน']]
     .concat(list.map((c) => [c.day, t(c.created), c.d.name, c.patientName, c.phone, c.hn || '', c.topic || '', c.note || '', c.urgent ? 'ด่วน' : '',
-      c.senderDeptName || c.createdByName || '', t(c.ackMs), c.ackEmpId || '', t(c.callMs), t(c.closedMs), c.attempts || 0,
+      c.senderDeptName || c.createdByName || '', t(c.ackMs), c.ackEmpId || '', c.ackEmpName || staffName(c.ackEmpId), t(c.callMs), t(c.closedMs), c.attempts || 0,
       STATUS[c.status] || c.status, c.scheduled && c.createdMs ? `นอกเวลา: รับสาย ${dayKey(new Date(c.createdMs))} ${hms(c.createdMs)}` : '', c.reportType ? `${REPORT_TYPES[c.reportType] || ''}${c.reportToName ? ' → ' + c.reportToName : ''} ${c.reportNote || ''}`.trim() : '']));
   const days = histDays();
   downloadCSV(lines, `doocall_history_${days[days.length - 1]}_${days[0]}.csv`);
@@ -1638,7 +1730,7 @@ function deptCard(c, now) {
             </div></div>`
         : `<button type="button" class="btn btn-red btn-xl" data-act="ack" data-id="${esc(c.id)}">รับเรื่อง</button>`)
       : `<div class="stack-sm">
-          <div class="sub">รับเรื่อง ${c.ackMs ? hm(c.ackMs) : ''} · ID ${esc(c.ackEmpId || '-')}</div>
+          <div class="sub">รับเรื่อง ${c.ackMs ? hm(c.ackMs) : ''} · ${esc(empLabel(c.ackEmpId, c.ackEmpName))}</div>
           <div class="acts">
             <button type="button" class="btn btn-green" data-act="done" data-id="${esc(c.id)}">ติดต่อแล้ว</button>
             <button type="button" class="btn btn-light" data-act="retry" data-id="${esc(c.id)}">โทรไม่ติด · ลองใหม่</button>
@@ -1662,7 +1754,7 @@ async function ackCase(id, empId) {
     if (c.status !== 'pending') return false; // มีคนรับเรื่องไปแล้ว
     const created = tms(c.releaseAt) || tms(c.createdAt) || Date.now(); // เคสตั้งเวลา นับจากเวลาส่งถึงแผนก
     const sec = Math.max(0, Math.round((Date.now() - created) / 1000));
-    tx.update(ref, { status: 'ack', ackAt: serverTimestamp(), ackEmpId: empId, ackByUid: S.user.uid, ackSeconds: sec });
+    tx.update(ref, { status: 'ack', ackAt: serverTimestamp(), ackEmpId: empId, ackEmpName: staffName(empId), ackByUid: S.user.uid, ackSeconds: sec });
     tx.set(doc(db, 'stats', c.day), {
       depts: { [c.deptId]: { ackCount: increment(1), ackSum: increment(sec), late: increment(sec > ESCALATE_MIN * 60 ? 1 : 0) } }
     }, { merge: true });
@@ -1741,7 +1833,7 @@ function openReport(id) {
       <div class="field"><label for="rp-note">รายละเอียด (ถ้ามี)</label>
         <input id="rp-note" name="note" class="input" maxlength="150" placeholder="เช่น คนไข้ต้องการนัดคลินิกหัวใจ โอนต่อให้แล้ว" autocomplete="off"></div>
       <div class="field"><label for="rp-emp">รหัสพนักงาน (ID)</label>
-        <input id="rp-emp" name="emp" class="input emp" inputmode="numeric" autocomplete="off" maxlength="12" placeholder="เช่น 10234"></div>
+        <input id="rp-emp" name="emp" class="input emp" inputmode="numeric" autocomplete="off" maxlength="12" placeholder="เช่น 540801"><div id="rp-emp-name" class="emp-name" aria-live="polite"></div></div>
       <div id="rp-msg"></div>
       <div class="dlg-btns"><button type="button" class="btn btn-light" data-act="dlg-close">ยกเลิก</button>
         <button type="submit" class="btn btn-primary">ส่งรายงาน</button></div>
@@ -1766,7 +1858,7 @@ async function submitReport(form) {
       const c = snap.data();
       if (c.reportType || c.status === 'cancelled') return false;
       tx.update(ref, { reportType: type, reportTo: to, reportToName: toName, reportNote: note,
-        reportEmpId: emp, reportByUid: S.user.uid, reportAt: serverTimestamp() });
+        reportEmpId: emp, reportEmpName: staffName(emp), reportByUid: S.user.uid, reportAt: serverTimestamp() });
       tx.set(doc(db, 'stats', c.day), { depts: { [c.deptId]: { [type === 'misroute' ? 'misrouted' : 'reportOther']: increment(1) } } }, { merge: true });
       return true;
     });
@@ -1789,13 +1881,14 @@ function openAck(target) {
     <form id="ack-form" class="dialog" role="dialog" aria-modal="true" aria-labelledby="dlg-t" novalidate>
       <div><h2 id="dlg-t" class="h2">ยืนยันการรับเรื่อง</h2><p class="sub2">${sub}</p></div>
       <div class="field"><label for="emp-id">รหัสพนักงาน (ID)</label>
-        <input id="emp-id" name="emp" class="input emp" inputmode="numeric" autocomplete="off" maxlength="12" placeholder="เช่น 10234"></div>
+        <input id="emp-id" name="emp" class="input emp" inputmode="numeric" autocomplete="off" maxlength="12" placeholder="เช่น 540801"><div id="emp-name" class="emp-name" aria-live="polite"></div></div>
       <div id="dlg-msg"></div>
       <div class="dlg-btns"><button type="button" class="btn btn-light" data-act="dlg-close">ยกเลิก</button>
         <button type="submit" class="btn btn-red">รับเรื่อง</button></div>
       <div class="sub">เสียงเตือนจะหยุดเมื่อยืนยันรหัสพนักงานแล้ว</div>
     </form></div>`;
   setTimeout(() => { const i = $('#emp-id'); if (i) i.focus(); }, 30);
+  loadStaffNames();
 }
 
 async function submitAck(form) {
@@ -1810,8 +1903,8 @@ async function submitAck(form) {
     let n = 0;
     for (const id of ids) { if (await ackCase(id, emp)) n += 1; }
     closeDialog();
-    if (n && SHOW_DOO) dooCelebrate(emp, n);
-    else toast('ok', n ? `รับเรื่องแล้ว ${n} เคส โดย ID ${esc(emp)}` : 'เคสนี้มีผู้รับเรื่องไปแล้ว');
+    if (n && SHOW_DOO) dooCelebrate(staffName(emp) ? `คุณ${staffName(emp)}` : `ID ${emp}`, n);
+    else toast('ok', n ? `รับเรื่องแล้ว ${n} เคส โดย ${esc(empLabel(emp))}` : 'เคสนี้มีผู้รับเรื่องไปแล้ว');
   } catch (err) {
     box.innerHTML = msgHtml('error', thaiErr(err));
     btn.disabled = false;
@@ -1977,7 +2070,7 @@ async function loadStaff(btn) {
       const c = d.data();
       if (!c.ackEmpId) return;
       const k = `${c.deptId}|${c.ackEmpId}`;
-      const r = g[k] || (g[k] = { dept: (S.deptMap[c.deptId] && S.deptMap[c.deptId].name) || c.deptName || '-', emp: c.ackEmpId,
+      const r = g[k] || (g[k] = { dept: (S.deptMap[c.deptId] && S.deptMap[c.deptId].name) || c.deptName || '-', emp: c.ackEmpId, name: c.ackEmpName || staffName(c.ackEmpId),
         n: 0, ackSum: 0, ackN: 0, callSum: 0, callN: 0, done: 0, fail: 0, open: 0, last: 0 });
       r.n += 1;
       if (typeof c.ackSeconds === 'number') { r.ackSum += c.ackSeconds; r.ackN += 1; }
@@ -1995,10 +2088,10 @@ async function loadStaff(btn) {
       <div class="row-w" style="justify-content:space-between"><span class="sub">${S.staffRows.length} รายการ · ${esc(label)}</span>
         <button type="button" class="btn btn-light sm" data-act="staff-export">${ICON.download} ดาวน์โหลด Excel</button></div>
       <div class="tbl-wrap"><table>
-        <thead><tr><th>แผนก</th><th>ID พนักงาน</th><th ${R}>รับเรื่อง (เคส)</th><th ${R}>รับเรื่องเฉลี่ย</th>
+        <thead><tr><th>แผนก</th><th>ID พนักงาน</th><th>ชื่อ</th><th ${R}>รับเรื่อง (เคส)</th><th ${R}>รับเรื่องเฉลี่ย</th>
           <th ${R}>รับเรื่อง→โทร</th><th ${R}>ติดต่อแล้ว</th><th ${R}>ติดต่อไม่ได้/เบอร์ผิด</th><th ${R}>ยังค้าง</th><th>รับเรื่องล่าสุด</th></tr></thead>
         <tbody>${S.staffRows.map((r) => `<tr>
-          <td>${esc(r.dept)}</td><td style="font-weight:600">${esc(r.emp)}</td><td ${R}><b>${r.n}</b></td>
+          <td>${esc(r.dept)}</td><td style="font-weight:600">${esc(r.emp)}</td><td>${esc(r.name || '-')}</td><td ${R}><b>${r.n}</b></td>
           <td ${R}>${avg(r.ackSum, r.ackN)}</td><td ${R}>${avg(r.callSum, r.callN)}</td>
           <td ${R}>${r.done}</td><td ${R}>${r.fail}</td>
           <td style="text-align:right;${r.open ? 'color:var(--amber);font-weight:600' : ''}">${r.open}</td>
@@ -2025,8 +2118,8 @@ function downloadCSV(lines, filename) {
 function exportStaff() {
   const { start, end } = statsRange();
   const m = (sum, n) => (n ? (sum / n / 60).toFixed(1) : '');
-  const lines = [['แผนก', 'ID พนักงาน', 'รับเรื่อง (เคส)', 'นาทีรับเรื่องเฉลี่ย', 'นาทีรับเรื่อง→โทร เฉลี่ย', 'ติดต่อแล้ว', 'ติดต่อไม่ได้/เบอร์ผิด', 'ยังค้าง', 'รับเรื่องล่าสุด']]
-    .concat(S.staffRows.map((r) => [r.dept, r.emp, r.n, m(r.ackSum, r.ackN), m(r.callSum, r.callN), r.done, r.fail, r.open,
+  const lines = [['แผนก', 'ID พนักงาน', 'ชื่อ', 'รับเรื่อง (เคส)', 'นาทีรับเรื่องเฉลี่ย', 'นาทีรับเรื่อง→โทร เฉลี่ย', 'ติดต่อแล้ว', 'ติดต่อไม่ได้/เบอร์ผิด', 'ยังค้าง', 'รับเรื่องล่าสุด']]
+    .concat(S.staffRows.map((r) => [r.dept, r.emp, r.name || '', r.n, m(r.ackSum, r.ackN), m(r.callSum, r.callN), r.done, r.fail, r.open,
       r.last ? `${dayKey(new Date(r.last))} ${hms(r.last)}` : '']));
   downloadCSV(lines, `staff_${start}_${end}.csv`);
   toast('ok', `ดาวน์โหลดแล้ว ${S.staffRows.length} รายการ`);
@@ -2043,13 +2136,13 @@ async function exportCSV(btn) {
     const fmt = (t) => { const ms = tms(t); return ms ? hms(ms) : ''; };
     const mins = (sec) => (typeof sec === 'number' ? (sec / 60).toFixed(1) : '');
     const header = ['วันที่', 'เวลาฝาก', 'แผนก', 'ชื่อคนไข้', 'เบอร์โทร', 'HN', 'เรื่อง', 'รายละเอียด', 'ด่วน', 'สถานะ', 'Operator',
-      'เวลารับเรื่อง', 'ID ผู้รับเรื่อง', 'นาทีถึงรับเรื่อง', 'เวลาโทรครั้งแรก', 'นาทีรับเรื่อง→โทร', 'โทรไม่ติด (ครั้ง)', 'เวลาปิดเคส', 'นาทีรับเรื่อง→ปิดเคส', 'รายงาน: เรื่อง', 'รายงาน: แผนกที่ถูก', 'รายงาน: รายละเอียด', 'รายงานโดย ID', 'ส่งโดยแผนก'];
+      'เวลารับเรื่อง', 'ID ผู้รับเรื่อง', 'ชื่อผู้รับเรื่อง', 'นาทีถึงรับเรื่อง', 'เวลาโทรครั้งแรก', 'นาทีรับเรื่อง→โทร', 'โทรไม่ติด (ครั้ง)', 'เวลาปิดเคส', 'นาทีรับเรื่อง→ปิดเคส', 'รายงาน: เรื่อง', 'รายงาน: แผนกที่ถูก', 'รายงาน: รายละเอียด', 'รายงานโดย ID', 'รายงานโดย', 'ส่งโดยแผนก'];
     const lines = [header].concat(rows.map((c) => [
       c.day, fmt(c.createdAt), (S.deptMap[c.deptId] && S.deptMap[c.deptId].name) || c.deptName, c.patientName, c.phone, c.hn,
       c.topic, c.note, c.urgent ? 'ด่วน' : '', STATUS[c.status] || c.status, c.createdByName,
-      fmt(c.ackAt), c.ackEmpId || '', mins(c.ackSeconds),
+      fmt(c.ackAt), c.ackEmpId || '', c.ackEmpName || staffName(c.ackEmpId), mins(c.ackSeconds),
       fmt(c.firstCallAt), mins(c.callSeconds),
-      c.attempts || 0, fmt(c.closedAt), mins(c.resolveSeconds), REPORT_TYPES[c.reportType] || '', c.reportToName || '', c.reportNote || '', c.reportEmpId || '', c.senderDeptName || ''
+      c.attempts || 0, fmt(c.closedAt), mins(c.resolveSeconds), REPORT_TYPES[c.reportType] || '', c.reportToName || '', c.reportNote || '', c.reportEmpId || '', c.reportEmpName || staffName(c.reportEmpId), c.senderDeptName || ''
     ]));
     const cell = (v) => {
       let s = String(v ?? '');
@@ -2105,6 +2198,29 @@ function loadAdmin() {
     <div class="tbl-wrap"><table><thead><tr><th>ชื่อผู้ใช้</th><th>ชื่อที่แสดง</th><th>บทบาท</th><th>แผนก</th><th>สถานะ</th><th></th></tr></thead><tbody id="user-rows"><tr><td colspan="6" class="muted">กำลังโหลด…</td></tr></tbody></table></div>
   </section>
 
+  <section class="glass card stack" aria-labelledby="staff-h">
+    <div class="board-head"><div><h2 id="staff-h" class="h2">รายชื่อพนักงาน</h2><p class="sub">ใช้แสดงชื่อเมื่อพนักงานพิมพ์รหัสตอนรับเรื่อง · <span id="staff-count">กำลังโหลด…</span></p></div></div>
+    <div class="stack-sm">
+      <label for="staff-paste" class="lbl">นำเข้าหลายคน: คัดลอกจาก Excel (รหัส | ชื่อ-นามสกุล | แผนก) แล้ววางที่นี่ หรือเลือกไฟล์ .csv</label>
+      <textarea id="staff-paste" class="input staff-paste" placeholder="540801&#9;สมศรี ใจดี&#9;TELEMEDICINE&#10;012345&#9;สมชาย รักงาน&#9;อายุรกรรม"></textarea>
+      <div class="staff-tools">
+        <button type="button" class="btn btn-light sm" data-act="staff-preview">ตรวจข้อมูล</button>
+        <label class="btn btn-light sm" style="cursor:pointer">เลือกไฟล์ .csv<input type="file" id="staff-file" accept=".csv,text/csv,.txt" hidden></label>
+        <span class="sub">รหัสที่มีอยู่แล้วจะถูกอัปเดตชื่อ · รหัสที่สั้นกว่า 6 หลัก (Excel ตัดเลข 0) จะเติม 0 ข้างหน้าให้</span>
+      </div>
+      <div id="staff-preview"></div>
+    </div>
+    <form id="staff-form" class="admin-form" novalidate>
+      <div class="field"><label for="s-id">รหัสพนักงาน</label><input id="s-id" name="id" class="input mono" inputmode="numeric" maxlength="12" autocomplete="off"></div>
+      <div class="field"><label for="s-name">ชื่อ-นามสกุล</label><input id="s-name" name="name" class="input" maxlength="80" autocomplete="off"></div>
+      <div class="field"><label for="s-dept">แผนก (ไม่บังคับ)</label><input id="s-dept" name="dept" class="input" maxlength="60" autocomplete="off"></div>
+      <div><button class="btn btn-primary" type="submit">เพิ่ม / แก้ไข</button></div>
+    </form>
+    <div id="staff-msg"></div>
+    <div class="row-w"><label for="staff-q" class="sr">ค้นหาพนักงาน</label><input id="staff-q" class="input sm" style="min-width:260px" placeholder="ค้นหารหัส ชื่อ หรือแผนก" autocomplete="off"></div>
+    <div id="staff-table"></div>
+  </section>
+
   <section class="glass card stack-sm">
     <div class="board-head"><div><h2 class="h2">สถานะหน้าจอแผนก</h2><p class="sub">ดูว่าแผนกไหนเปิดหน้าจอ DOOCALL ไว้ (หน้าแผนกส่งสัญญาณทุก ${PRESENCE_EVERY_MIN} นาที)</p></div>
       <button type="button" class="btn btn-light sm" data-act="presence-load">ตรวจสอบตอนนี้</button></div>
@@ -2120,6 +2236,7 @@ function loadAdmin() {
   fillDeptSelects();
   paintAdminDepts();
   loadUsers();
+  loadStaffNames(true).then(paintStaffTable);
 }
 
 /* ---------- LINE alert to department heads ---------- */
@@ -2321,6 +2438,89 @@ async function submitDepts(form) {
   } catch (err) { $('#dp-msg').innerHTML = msgHtml('error', thaiErr(err)); btn.disabled = false; }
 }
 
+/* ---------- Admin: รายชื่อพนักงาน ---------- */
+const padEmp = (v) => { const x = String(v || '').replace(/\s/g, '').replace(/^'+/, ''); return /^\d{1,5}$/.test(x) ? x.padStart(6, '0') : x; };
+function parseStaffText(text) {
+  const rows = [], bad = [];
+  String(text || '').split(/\r?\n/).forEach((line, i) => {
+    if (!line.trim()) return;
+    const cells = (line.includes('\t') ? line.split('\t') : line.split(',')).map((x) => x.trim().replace(/^"|"$/g, ''));
+    const id = padEmp(cells[0]); const name = (cells[1] || '').trim(); const dept = (cells[2] || '').trim();
+    if (i === 0 && !/\d/.test(cells[0] || '')) return; // หัวตาราง
+    if (!/^[A-Za-z0-9]{3,12}$/.test(id) || !name) { bad.push(`แถว ${i + 1}: ${line.slice(0, 60)}`); return; }
+    rows.push({ id, name, dept });
+  });
+  const m = new Map(); rows.forEach((r) => m.set(r.id, r)); // รหัสซ้ำ ใช้แถวล่าสุด
+  return { rows: [...m.values()], bad };
+}
+function previewStaff(text) {
+  const box = $('#staff-preview'); if (!box) return;
+  const { rows, bad } = parseStaffText(text);
+  S.staffImport = rows;
+  if (!rows.length) { box.innerHTML = msgHtml('error', 'ไม่พบข้อมูลที่ใช้ได้ — ต้องมีอย่างน้อย รหัส และ ชื่อ-นามสกุล'); return; }
+  const upd = rows.filter((r) => S.staff.has(r.id)).length;
+  box.innerHTML = `<div class="msg info stack-sm" style="align-items:flex-start">
+      <div>พบ <b>${rows.length}</b> คน · ใหม่ ${rows.length - upd} · อัปเดตชื่อ ${upd}${bad.length ? ` · <span style="color:var(--red)">ข้ามแถวที่ไม่ถูกต้อง ${bad.length}</span>` : ''}</div>
+      <div class="sub">ตัวอย่าง: ${rows.slice(0, 3).map((r) => `${esc(r.id)} ${esc(r.name)}`).join(' · ')}</div>
+      ${bad.length ? `<div class="sub">${bad.slice(0, 5).map(esc).join('<br>')}${bad.length > 5 ? '<br>…' : ''}</div>` : ''}
+      <button type="button" class="btn btn-primary sm" data-act="staff-save">บันทึก ${rows.length} รายชื่อ</button></div>`;
+}
+async function saveStaffImport(btn) {
+  const rows = S.staffImport || []; if (!rows.length) return;
+  btn.disabled = true; btn.textContent = 'กำลังบันทึก…';
+  try {
+    for (let i = 0; i < rows.length; i += 400) {
+      const b = writeBatch(db);
+      rows.slice(i, i + 400).forEach((r) => b.set(doc(db, 'staff', r.id), { name: r.name, dept: r.dept, active: true, updatedAt: serverTimestamp() }, { merge: true }));
+      await b.commit();
+    }
+    S.staffImport = null;
+    $('#staff-preview').innerHTML = msgHtml('ok', `บันทึกแล้ว ${rows.length} รายชื่อ`);
+    const t = $('#staff-paste'); if (t) t.value = '';
+    await loadStaffNames(true); paintStaffTable();
+  } catch (err) { $('#staff-preview').innerHTML = msgHtml('error', thaiErr(err)); }
+}
+async function submitStaff(form) {
+  const box = $('#staff-msg');
+  const id = padEmp(form.id.value); const name = form.name.value.trim(); const dept = form.dept.value.trim();
+  if (!/^[A-Za-z0-9]{3,12}$/.test(id) || !name) { box.innerHTML = msgHtml('error', 'กรอกรหัสพนักงานและชื่อ-นามสกุล'); return; }
+  try {
+    await setDoc(doc(db, 'staff', id), { name, dept, active: true, updatedAt: serverTimestamp() }, { merge: true });
+    box.innerHTML = msgHtml('ok', `บันทึก ${esc(id)} ${esc(name)} แล้ว`); form.reset();
+    await loadStaffNames(true); paintStaffTable();
+  } catch (err) { box.innerHTML = msgHtml('error', thaiErr(err)); }
+}
+async function paintStaffTable() {
+  const box = $('#staff-table'); const cnt = $('#staff-count'); if (!box) return;
+  let all = [];
+  try {
+    const snap = await getDocs(collection(db, 'staff'));
+    all = snap.docs.map((d) => ({ id: d.id, ...d.data() })).sort((a, b) => a.id.localeCompare(b.id));
+  } catch (err) { box.innerHTML = msgHtml('error', thaiErr(err)); return; }
+  S.staffAll = all;
+  if (cnt) cnt.textContent = `ทั้งหมด ${all.filter((x) => x.active !== false).length} คน`;
+  filterStaffTable();
+}
+function filterStaffTable() {
+  const box = $('#staff-table'); if (!box) return;
+  const q = (S.staffQ || '').trim().toLowerCase();
+  const list = (S.staffAll || []).filter((x) => !q || `${x.id} ${x.name} ${x.dept || ''}`.toLowerCase().includes(q));
+  if (!list.length) { box.innerHTML = `<div class="empty">${(S.staffAll || []).length ? 'ไม่พบรายชื่อที่ค้นหา' : 'ยังไม่มีรายชื่อพนักงาน — นำเข้าจาก Excel ด้านบน'}</div>`; return; }
+  box.innerHTML = `<div class="tbl-wrap"><table><thead><tr><th>รหัส</th><th>ชื่อ-นามสกุล</th><th>แผนก</th><th>สถานะ</th><th></th></tr></thead><tbody>
+    ${list.slice(0, 50).map((x) => `<tr><td class="mono">${esc(x.id)}</td><td style="font-weight:600">${esc(x.name)}</td><td>${esc(x.dept || '')}</td>
+      <td><span class="tag ${x.active === false ? 'off' : 'on'}">${x.active === false ? 'ปิดใช้งาน' : 'ใช้งาน'}</span></td>
+      <td><div class="row-w"><button type="button" class="linkbtn" data-act="staff-edit" data-id="${esc(x.id)}">แก้ไข</button>
+        <button type="button" class="linkbtn" data-act="staff-toggle" data-id="${esc(x.id)}" data-on="${x.active === false ? '0' : '1'}">${x.active === false ? 'เปิดใช้งาน' : 'ปิดใช้งาน'}</button></div></td></tr>`).join('')}
+    </tbody></table></div>${list.length > 50 ? `<div class="sub">แสดง 50 จาก ${list.length} รายชื่อ — พิมพ์ค้นหาเพื่อดูคนอื่น</div>` : ''}`;
+}
+async function readStaffFile(file) {
+  const buf = await file.arrayBuffer();
+  let text = new TextDecoder('utf-8').decode(buf);
+  if (text.includes('�')) { try { text = new TextDecoder('windows-874').decode(buf); } catch (e) { /* ใช้ UTF-8 */ } }
+  const t = $('#staff-paste'); if (t) t.value = text.replace(/^﻿/, '');
+  previewStaff(text.replace(/^﻿/, ''));
+}
+
 function getSecondaryAuth() {
   // ใช้แอปสำรองสร้างบัญชี เพื่อไม่ให้ผู้ดูแลระบบถูก logout
   if (!secAuth) secAuth = getAuth(initializeApp(firebaseConfig, 'secondary'));
@@ -2417,6 +2617,13 @@ document.addEventListener('click', async (e) => {
     case 'toggle-h': { const k = 'h:' + id; if (S.expanded.has(k)) S.expanded.delete(k); else S.expanded.add(k);
       if ($('#hist-list')) paintHistory(); else renderDept(); break; }
     case 'edit-depts': openDeptsDialog(id); break;
+    case 'staff-preview': previewStaff(($('#staff-paste') || {}).value); break;
+    case 'staff-save': await saveStaffImport(el); break;
+    case 'staff-edit': { const x = (S.staffAll || []).find((r) => r.id === id); const f = $('#staff-form');
+      if (x && f) { f.id.value = x.id; f.name.value = x.name || ''; f.dept.value = x.dept || ''; f.name.focus(); } break; }
+    case 'staff-toggle':
+      if (await guard(updateDoc(doc(db, 'staff', id), { active: el.dataset.on !== '1' }), 'บันทึกแล้ว')) { await loadStaffNames(true); paintStaffTable(); }
+      break;
     case 'presence-load': await loadPresenceTable(el); break;
     case 'retry': await guard(recordAttempt(id), 'บันทึกว่าโทรไม่ติดแล้ว'); break;
     case 'done': el.disabled = true; await guard(closeCase(id, 'done'), 'ปิดเคส: โทรกลับสำเร็จ'); break;
@@ -2457,7 +2664,7 @@ document.addEventListener('submit', (e) => {
   const f = e.target;
   const handlers = {
     'login-form': doLogin, 'case-form': submitCase, 'ack-form': submitAck, 'report-form': submitReport, 'pw-form': submitPw,
-    'dept-form': submitDept, 'user-form': submitUser, 'depts-form': submitDepts,
+    'dept-form': submitDept, 'user-form': submitUser, 'depts-form': submitDepts, 'staff-form': submitStaff,
     'range-form': (form) => {
       const from = form.from.value, to = form.to.value;
       if (!from || !to || from > to) { toast('error', 'ช่วงวันที่ไม่ถูกต้อง'); return; }
@@ -2473,6 +2680,7 @@ document.addEventListener('change', (e) => {
   if (e.target.id === 'f-at') { S.form.at = e.target.value || '08:00'; paintSched(); }
   if (e.target.id === 'f-filter') { S.deptFilter = e.target.value; renderBoard(); }
   if (e.target.id === 'u-role') toggleUserDept();
+  if (e.target.id === 'staff-file' && e.target.files && e.target.files[0]) { readStaffFile(e.target.files[0]); e.target.value = ''; }
   if (e.target.id === 'h-date') { S.hist.date = e.target.value || dayKey(); loadHistory(); }
   if (e.target.id === 'h-st') { S.hist.status = e.target.value; paintHistory(); }
   if (e.target.id === 'h-dept') { S.hist.dept = e.target.value; paintHistory(); }
@@ -2481,6 +2689,9 @@ document.addEventListener('change', (e) => {
 
 document.addEventListener('input', (e) => {
   if (e.target.id === 'h-q') { S.hist.q = e.target.value; paintHistory(); }
+  if (e.target.id === 'emp-id') paintEmpName('emp-id', 'emp-name');
+  if (e.target.id === 'rp-emp') paintEmpName('rp-emp', 'rp-emp-name');
+  if (e.target.id === 'staff-q') { S.staffQ = e.target.value; filterStaffTable(); }
 });
 
 document.addEventListener('keydown', (e) => {
